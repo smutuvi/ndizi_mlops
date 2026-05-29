@@ -1,0 +1,65 @@
+{
+  "text_normalize": "none",
+  "pooled": {
+    "wer": 0.3138102134327295,
+    "cer": 0.10820398481297593,
+    "n_utterances": 1041
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.3549663928304705,
+      "cer": 0.12370301165091228,
+      "n": 690,
+      "dropped_long": 0
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.24196597353497165,
+      "cer": 0.0796611541809202,
+      "n": 351,
+      "dropped_long": 0
+    }
+  },
+  "run_info": {
+    "model_path": "smutuvi/ndizi_whisper_large_v3_turbo_merged",
+    "processor_path": "smutuvi/ndizi_whisper_large_v3_turbo_merged",
+    "decode_mode": "transformers_pipeline_automatic_speech_recognition",
+    "decode_backend": "whisper",
+    "chunk_length_s": 30.0,
+    "stride_length_s": null,
+    "batch_size": 8,
+    "fp16": true,
+    "return_timestamps": false,
+    "max_audio_seconds": null,
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "ctc",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true,
+      "config_path": null,
+      "whisper_language": "sw",
+      "whisper_task": "transcribe"
+    },
+    "whisper_generate_kwargs": {
+      "forced_decoder_ids": [
+        [
+          1,
+          50318
+        ],
+        [
+          2,
+          50360
+        ],
+        [
+          3,
+          50364
+        ]
+      ],
+      "max_length": 444
+    }
+  }
+}

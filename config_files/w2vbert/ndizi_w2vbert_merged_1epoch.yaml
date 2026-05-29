@@ -1,0 +1,52 @@
+# One epoch, facebook/w2v-bert-2.0 + custom CTC char vocab (use_hub_ctc_checkpoint: false).
+# Tighten character_set if you see stripped characters in transcripts.
+
+project: "Ndizi-Swahili-w2vbert"
+output_dir: "inprogress/ndizi-w2vbert-merged-1epoch-w2vbert20"
+seed: 42
+
+pretrained_model: "facebook/w2v-bert-2.0"
+freeze_feature_encoder: true
+add_final_layer_adapter: true
+
+use_hub_ctc_checkpoint: false
+character_set: "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
+apply_accent_replacements: true
+add_language_tokens: false
+
+batch_size: 4
+per_device_eval_batch_size: 4
+gradient_accumulation_steps: 4
+num_train_epochs: 1.0
+learning_rate: 0.00003
+warmup_steps: 500
+weight_decay: 0.0
+
+fp16: true
+bf16: false
+gradient_checkpointing: true
+group_by_length: true
+
+eval_strategy: "epoch"
+eval_steps: 500
+logging_steps: 50
+save_total_limit: 2
+
+max_input_seconds: 30.0
+normalize_wer: false
+
+dataset_revision: null
+
+train_datasets:
+  - "smutuvi/ndizi-1"
+  - "smutuvi/ndizi-1-2025"
+train_splits:
+  - "train"
+  - "train"
+train_weights: null
+
+eval_datasets: null
+eval_splits: null
+
+push_to_hub: false
+hub_model_id: null

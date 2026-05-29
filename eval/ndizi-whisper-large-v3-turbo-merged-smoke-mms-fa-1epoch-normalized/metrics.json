@@ -1,0 +1,78 @@
+{
+  "text_normalize": "jiwer_default",
+  "pooled": {
+    "wer": 0.36779753567104295,
+    "cer": 0.13685773918494404,
+    "n_utterances": 1041,
+    "wer_normalized": 0.33358691517687333,
+    "cer_normalized": 0.12013211460173592
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.4136669156086632,
+      "cer": 0.15664431743240273,
+      "n": 690,
+      "dropped_long": 0,
+      "dropped_qc": 0,
+      "wer_normalized": 0.37516833757294626,
+      "cer_normalized": 0.13877309876259558
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.2877257023662082,
+      "cer": 0.10041900289456106,
+      "n": 351,
+      "dropped_long": 0,
+      "dropped_qc": 0,
+      "wer_normalized": 0.2610879206887555,
+      "cer_normalized": 0.08550489592351872
+    }
+  },
+  "run_info": {
+    "model_path": "./runs/merged-full-mms-fa-smoke/openai-whisper-large-v3-turbo-26052026-035323",
+    "processor_path": "/home/smutuvi/ndizi_mlops/runs/merged-full-mms-fa-smoke/openai-whisper-large-v3-turbo-26052026-035323",
+    "decode_mode": "transformers_pipeline_automatic_speech_recognition",
+    "decode_backend": "whisper",
+    "chunk_length_s": 30.0,
+    "stride_length_s": null,
+    "batch_size": 8,
+    "fp16": true,
+    "return_timestamps": false,
+    "max_audio_seconds": null,
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "whisper",
+      "whisper_language": "sw",
+      "whisper_task": "transcribe",
+      "generation_max_length": 444,
+      "trainable_scope": "full",
+      "pretrained_model": "openai/whisper-large-v3-turbo",
+      "config_path": "/home/smutuvi/ndizi_mlops/runs/merged-full-mms-fa-smoke/openai-whisper-large-v3-turbo-26052026-035323/training_config_resolved.json",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true
+    },
+    "aggressive_qc": false,
+    "qc_use_may6_text_norm": null,
+    "whisper_generate_kwargs": {
+      "forced_decoder_ids": [
+        [
+          1,
+          50318
+        ],
+        [
+          2,
+          50360
+        ],
+        [
+          3,
+          50364
+        ]
+      ],
+      "max_length": 444
+    }
+  }
+}

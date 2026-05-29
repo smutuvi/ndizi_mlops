@@ -1,0 +1,53 @@
+{
+  "text_normalize": "jiwer_default",
+  "pooled": {
+    "wer": 0.4830132238076019,
+    "cer": 0.17004195664717237,
+    "n_utterances": 1041,
+    "wer_normalized": 0.4400912894636744,
+    "cer_normalized": 0.1461496445366174
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.5190814040328603,
+      "cer": 0.1783633765662783,
+      "n": 690,
+      "dropped_long": 0,
+      "wer_normalized": 0.4766945982343259,
+      "cer_normalized": 0.15286703646568417
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.4200508441431458,
+      "cer": 0.15471732485881423,
+      "n": 351,
+      "dropped_long": 0,
+      "wer_normalized": 0.37627184972606315,
+      "cer_normalized": 0.13367151584620826
+    }
+  },
+  "run_info": {
+    "model_path": "badrex/w2v-bert-2.0-swahili-asr",
+    "processor_path": "badrex/w2v-bert-2.0-swahili-asr",
+    "model_input_name": "input_features",
+    "max_audio_seconds": null,
+    "chunk_long_audio_seconds": 30.0,
+    "fp16": true,
+    "cuda_empty_cache": false,
+    "decode_mode": "streaming_per_batch_ctc",
+    "decode_backend": "ctc",
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "ctc",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true,
+      "config_path": null,
+      "whisper_language": "sw",
+      "whisper_task": "transcribe"
+    }
+  }
+}

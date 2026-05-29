@@ -1,0 +1,71 @@
+{
+  "text_normalize": "jiwer_default",
+  "pooled": {
+    "wer": 0.37408893426082,
+    "cer": 0.1383180299608927,
+    "n_utterances": 1041,
+    "wer_normalized": 0.33021110688474703,
+    "cer_normalized": 0.11970112058444496
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.4205750560119492,
+      "cer": 0.1510276983952517,
+      "n": 690,
+      "dropped_long": 0,
+      "wer_normalized": 0.3715397276672153,
+      "cer_normalized": 0.1301276791282371
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.2929404862785998,
+      "cer": 0.11491204987551364,
+      "n": 351,
+      "dropped_long": 0,
+      "wer_normalized": 0.2581528828593791,
+      "cer_normalized": 0.10033289841111125
+    }
+  },
+  "run_info": {
+    "model_path": "./runs/ndizi-whisper-large-v3-turbo-merged-25epoch-qc-mms-fa/openai-whisper-large-v3-turbo-18052026-101722/checkpoint-2216",
+    "processor_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-large-v3-turbo-merged-25epoch-qc-mms-fa/openai-whisper-large-v3-turbo-18052026-101722/checkpoint-2216",
+    "decode_mode": "transformers_pipeline_automatic_speech_recognition",
+    "decode_backend": "whisper",
+    "chunk_length_s": 30.0,
+    "stride_length_s": null,
+    "batch_size": 8,
+    "fp16": true,
+    "return_timestamps": false,
+    "max_audio_seconds": null,
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "ctc",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true,
+      "config_path": null,
+      "whisper_language": "sw",
+      "whisper_task": "transcribe"
+    },
+    "whisper_generate_kwargs": {
+      "forced_decoder_ids": [
+        [
+          1,
+          50318
+        ],
+        [
+          2,
+          50360
+        ],
+        [
+          3,
+          50364
+        ]
+      ],
+      "max_length": 444
+    }
+  }
+}

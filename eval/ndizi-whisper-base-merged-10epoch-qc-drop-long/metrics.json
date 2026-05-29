@@ -1,0 +1,68 @@
+{
+  "text_normalize": "none",
+  "pooled": {
+    "wer": 0.6208067234870966,
+    "cer": 0.350017452255615,
+    "n_utterances": 1041
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.6916355489171023,
+      "cer": 0.38177071883930536,
+      "n": 690,
+      "dropped_long": 0
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.497164461247637,
+      "cer": 0.29154099953444124,
+      "n": 351,
+      "dropped_long": 0
+    }
+  },
+  "run_info": {
+    "model_path": "./runs/ndizi-whisper-base-merged-10epoch-qc-drop-long/openai-whisper-base-19052026-145611",
+    "processor_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-base-merged-10epoch-qc-drop-long/openai-whisper-base-19052026-145611",
+    "decode_mode": "transformers_pipeline_automatic_speech_recognition",
+    "decode_backend": "whisper",
+    "chunk_length_s": 30.0,
+    "stride_length_s": null,
+    "batch_size": 8,
+    "fp16": true,
+    "return_timestamps": false,
+    "max_audio_seconds": null,
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "whisper",
+      "whisper_language": "sw",
+      "whisper_task": "transcribe",
+      "generation_max_length": 448,
+      "trainable_scope": "full",
+      "pretrained_model": "openai/whisper-base",
+      "config_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-base-merged-10epoch-qc-drop-long/openai-whisper-base-19052026-145611/training_config_resolved.json",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true
+    },
+    "whisper_generate_kwargs": {
+      "forced_decoder_ids": [
+        [
+          1,
+          50318
+        ],
+        [
+          2,
+          50359
+        ],
+        [
+          3,
+          50363
+        ]
+      ],
+      "max_length": 448
+    }
+  }
+}

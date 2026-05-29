@@ -1,0 +1,49 @@
+# Merged datasets; higher per-device batch, lower LR, step-based eval (tune for your GPU).
+# Same train/eval splits as ndizi_w2vbert_merged.yaml.
+
+project: "Ndizi-Swahili-w2vbert"
+output_dir: "inprogress/ndizi-w2vbert-merged-alt-hparams"
+seed: 42
+
+pretrained_model: "facebook/wav2vec2-bert-rel-pos-large"
+freeze_feature_encoder: true
+
+use_hub_ctc_checkpoint: true
+
+batch_size: 8
+per_device_eval_batch_size: 8
+gradient_accumulation_steps: 4
+num_train_epochs: 25.0
+learning_rate: 0.00003
+warmup_steps: 800
+weight_decay: 0.0
+
+fp16: true
+bf16: false
+gradient_checkpointing: true
+group_by_length: true
+
+eval_strategy: "steps"
+eval_steps: 800
+save_steps: 800
+logging_steps: 5
+save_total_limit: 2
+
+max_input_seconds: 30.0
+normalize_wer: false
+
+dataset_revision: null
+
+train_datasets:
+  - "smutuvi/ndizi-1"
+  - "smutuvi/ndizi-1-2025"
+train_splits:
+  - "train"
+  - "train"
+train_weights: null
+
+eval_datasets: null
+eval_splits: null
+
+push_to_hub: false
+hub_model_id: null

@@ -1,0 +1,50 @@
+# Merged training: smutuvi/ndizi-1 + smutuvi/ndizi-1-2025 (train), pooled validation.
+
+project: "Ndizi-Swahili-w2vbert"
+output_dir: "inprogress/ndizi-w2vbert-merged"
+seed: 42
+
+# CTC checkpoint with bundled tokenizer (Hub CTC; use use_hub_ctc_checkpoint).
+pretrained_model: "facebook/wav2vec2-bert-rel-pos-large"
+freeze_feature_encoder: false
+
+use_hub_ctc_checkpoint: true
+
+batch_size: 4
+per_device_eval_batch_size: 4
+gradient_accumulation_steps: 4
+num_train_epochs: 10.0
+learning_rate: 0.0001
+warmup_steps: 500
+weight_decay: 0.0
+
+fp16: true
+bf16: false
+gradient_checkpointing: true
+group_by_length: true
+
+eval_strategy: "epoch"
+eval_steps: 500
+logging_steps: 50
+save_total_limit: 2
+
+max_input_seconds: 30.0
+normalize_wer: false
+
+dataset_revision: null
+
+train_datasets:
+  - "smutuvi/ndizi-1"
+  - "smutuvi/ndizi-1-2025"
+train_splits:
+  - "train"
+  - "train"
+# Omit train_weights to concatenate (ndizi-1 then ndizi-1-2025). Set two floats to interleave.
+train_weights: null
+
+# null = same hub ids as train, validation splits (default in finetune script)
+eval_datasets: null
+eval_splits: null
+
+push_to_hub: false
+hub_model_id: null

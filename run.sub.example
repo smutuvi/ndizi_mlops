@@ -1,0 +1,21 @@
+# Example HTCondor submit file.
+# Set initialdir / project paths to your cluster layout; point executable at this bundle's bash driver.
+
+universe             = docker
+docker_image         = huggingface/transformers-pytorch-gpu:latest
+
+transfer_executable  = False
+initialdir           = /YOUR_PROJECT/May_4_experiment/ndizi_mlops
+executable           = /YOUR_PROJECT/May_4_experiment/ndizi_mlops/bash_scripts/run_train_ndizi_w2vbert.sh
+
+arguments            = /YOUR_PROJECT/May_4_experiment/ndizi_mlops/config_files/w2vbert/ndizi_w2vbert_merged.json
+
+output               = logs/run.$(ClusterId).out
+error                = logs/run.$(ClusterId).err
+log                  = logs/run.$(ClusterId).log
+
+request_CPUs         = 8
+request_memory       = 32G
+request_GPUs         = 1
+
+queue 1

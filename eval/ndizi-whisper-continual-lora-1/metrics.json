@@ -1,0 +1,56 @@
+{
+  "text_normalize": "jiwer_default",
+  "pooled": {
+    "wer": 0.501127703520809,
+    "cer": 0.2739327411438707,
+    "n_utterances": 1041,
+    "wer_normalized": 0.4671690756941803,
+    "cer_normalized": 0.25957788189910475
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.5420463032113517,
+      "cer": 0.3029511980655089,
+      "n": 690,
+      "dropped_long": 0,
+      "wer_normalized": 0.5056486607810864,
+      "cer_normalized": 0.2870581284668658
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.4296981943810703,
+      "cer": 0.22049268263060948,
+      "n": 351,
+      "dropped_long": 0,
+      "wer_normalized": 0.40007826767545,
+      "cer_normalized": 0.20853097906276294
+    }
+  },
+  "run_info": {
+    "model_path": "./runs/ndizi-whisper-continual-lora/msingiai-sauti-asr-17052026-051939/",
+    "processor_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-continual-lora/msingiai-sauti-asr-17052026-051939",
+    "model_input_name": "input_features",
+    "max_audio_seconds": null,
+    "chunk_long_audio_seconds": null,
+    "fp16": false,
+    "cuda_empty_cache": false,
+    "decode_mode": "streaming_per_batch_whisper",
+    "decode_backend": "whisper",
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "whisper",
+      "whisper_language": "sw",
+      "whisper_task": "transcribe",
+      "generation_max_length": 444,
+      "trainable_scope": "lora",
+      "pretrained_model": "msingiai/sauti-asr",
+      "config_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-continual-lora/msingiai-sauti-asr-17052026-051939/training_config_resolved.json",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true
+    }
+  }
+}

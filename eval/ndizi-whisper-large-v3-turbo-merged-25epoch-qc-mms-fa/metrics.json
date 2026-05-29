@@ -1,0 +1,53 @@
+{
+  "text_normalize": "jiwer_default",
+  "pooled": {
+    "wer": 0.44616699508558677,
+    "cer": 0.2719951846021242,
+    "n_utterances": 1041,
+    "wer_normalized": 0.41068372004564474,
+    "cer_normalized": 0.25905727526435723
+  },
+  "per_set": {
+    "smutuvi/ndizi-1:test": {
+      "wer": 0.4949962658700523,
+      "cer": 0.2950208837107057,
+      "n": 690,
+      "dropped_long": 0,
+      "wer_normalized": 0.4557085141403561,
+      "cer_normalized": 0.2800800866511307
+    },
+    "smutuvi/ndizi-1-2025:test": {
+      "wer": 0.3609282315364057,
+      "cer": 0.22959132036516,
+      "n": 351,
+      "dropped_long": 0,
+      "wer_normalized": 0.3321810592225411,
+      "cer_normalized": 0.22000560927725682
+    }
+  },
+  "run_info": {
+    "model_path": "./runs/ndizi-whisper-large-v3-turbo-merged-25epoch-qc-mms-fa/openai-whisper-large-v3-turbo-18052026-101722/checkpoint-2216",
+    "processor_path": "/home/smutuvi/ndizi_mlops/runs/ndizi-whisper-large-v3-turbo-merged-25epoch-qc-mms-fa/openai-whisper-large-v3-turbo-18052026-101722/checkpoint-2216",
+    "model_input_name": "input_features",
+    "max_audio_seconds": null,
+    "chunk_long_audio_seconds": null,
+    "fp16": false,
+    "cuda_empty_cache": false,
+    "decode_mode": "streaming_per_batch_whisper",
+    "decode_backend": "whisper",
+    "test_datasets": [
+      "smutuvi/ndizi-1:test",
+      "smutuvi/ndizi-1-2025:test"
+    ],
+    "dataset_revision": null,
+    "training_text_settings": {
+      "stack": "ctc",
+      "use_hub_ctc_checkpoint": true,
+      "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+      "apply_accent_replacements": true,
+      "config_path": null,
+      "whisper_language": "sw",
+      "whisper_task": "transcribe"
+    }
+  }
+}
