@@ -33,11 +33,10 @@
   "normalize_wer": false,
   "train_datasets": [
     "smutuvi/ndizi-1",
-    "smutuvi/ndizi-1-2025",
-    "badrex/swahili-speech-400hr"
+    "smutuvi/ndizi-1-2025"
   ],
-  "train_splits": ["train", "train", "train"],
-  "train_weights": [0.45, 0.45, 0.1],
+  "train_splits": ["train", "train"],
+  "train_weights": null,
   "eval_datasets": ["smutuvi/ndizi-1", "smutuvi/ndizi-1-2025"],
   "eval_splits": ["validation", "validation"],
   "push_to_hub": false
