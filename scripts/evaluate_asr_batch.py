@@ -575,12 +575,79 @@ def load_eval_text_settings(
                 "normalize_oral_tokens": bool(cfg.normalize_oral_tokens),
                 "enrich_discourse_punctuation": bool(cfg.enrich_discourse_punctuation),
                 "lowercase_ctc_labels": bool(cfg.lowercase_ctc_labels),
+                "pretrained_model": str(cfg.pretrained_model or raw.get("pretrained_model", "")),
+                "trainable_scope": str(getattr(cfg, "trainable_scope", "full") or "full"),
                 "config_path": str(p),
                 "whisper_language": defaults["whisper_language"],
                 "whisper_task": defaults["whisper_task"],
                 "training_config_raw": dict(cfg.training_config_raw),
             }
     return defaults
+
+
+def _classify_hub_config_dict(cfg: Dict[str, Any]) -> Optional[str]:
+    """Return ``whisper`` or ``ctc`` from a HuggingFace ``config.json`` object."""
+    mt = str(cfg.get("model_type") or "").lower()
+    arch_list = cfg.get("architectures") or []
+    arch_s = " ".join(str(a) for a in arch_list).lower()
+    if mt == "whisper" or "whisper" in arch_s:
+        return "whisper"
+    compact = arch_s.replace("_", "")
+    if "forctc" in compact or mt in (
+        "wav2vec2",
+        "wav2vec2_bert",
+        "wav2vec2-conformer",
+        "wavlm",
+        "hubert",
+        "data2vec-audio",
+        "unispeech",
+        "unispeech-sat",
+        "sew",
+        "sew-d",
+    ):
+        return "ctc"
+    return None
+
+
+def _infer_backend_from_adapter_dir(root: Path) -> Optional[str]:
+    """
+    PEFT LoRA dirs may be Whisper or CTC/w2v-BERT — do not assume Whisper.
+    """
+    resolved = root / "training_config_resolved.json"
+    if resolved.is_file():
+        try:
+            with open(resolved, encoding="utf-8") as f:
+                raw = json.load(f)
+            if str(raw.get("stack") or "ctc").lower() == "whisper":
+                return "whisper"
+            return "ctc"
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    cfg_path = root / "config.json"
+    if cfg_path.is_file():
+        try:
+            with open(cfg_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+            kind = _classify_hub_config_dict(cfg)
+            if kind:
+                return kind
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    adapter_path = root / "adapter_config.json"
+    if adapter_path.is_file():
+        try:
+            with open(adapter_path, encoding="utf-8") as f:
+                ac = json.load(f)
+            base = str(ac.get("base_model_name_or_path") or "").lower()
+            if "whisper" in base or "sauti" in base:
+                return "whisper"
+            if any(tok in base for tok in ("w2v", "wav2vec", "badrex", "hubert", "wavlm", "ctc")):
+                return "ctc"
+        except (OSError, json.JSONDecodeError):
+            pass
+    return None
 
 
 def infer_decode_backend_from_checkpoint(model_path: str) -> Optional[str]:
@@ -612,7 +679,7 @@ def infer_decode_backend_from_checkpoint(model_path: str) -> Optional[str]:
 
     root = Path(raw).expanduser().resolve()
     if (root / "adapter_config.json").is_file():
-        return "whisper"
+        return _infer_backend_from_adapter_dir(root)
     cfg_path = root / "config.json"
     if not cfg_path.is_file():
         return None
@@ -621,26 +688,7 @@ def infer_decode_backend_from_checkpoint(model_path: str) -> Optional[str]:
             cfg = json.load(f)
     except (OSError, json.JSONDecodeError):
         return None
-    mt = str(cfg.get("model_type") or "").lower()
-    arch_list = cfg.get("architectures") or []
-    arch_s = " ".join(str(a) for a in arch_list).lower()
-    if mt == "whisper" or "whisper" in arch_s:
-        return "whisper"
-    compact = arch_s.replace("_", "")
-    if "forctc" in compact or mt in (
-        "wav2vec2",
-        "wav2vec2_bert",
-        "wav2vec2-conformer",
-        "wavlm",
-        "hubert",
-        "data2vec-audio",
-        "unispeech",
-        "unispeech-sat",
-        "sew",
-        "sew-d",
-    ):
-        return "ctc"
-    return None
+    return _classify_hub_config_dict(cfg)
 
 
 def build_eval_meta(
