@@ -91,7 +91,7 @@ class WhisperTrainingConfig:
 
     # Multi-gate audio/text QC filter (ported from cleaned_ndizi_may_6.py).
     # Off by default; set true + optional "qc_*" overrides to enable.
-    apply_data_qc: bool = False
+    apply_data_qc: bool = True
     # When true with apply_data_qc, QC gates use May 6 ``__text_norm`` (punct/number norm);
     # training labels still use ``clean_transcription`` (minimal strip for Whisper).
     qc_use_may6_text_norm: bool = False

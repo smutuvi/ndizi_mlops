@@ -9,7 +9,7 @@ Usage:
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged_10epoch.json --max-input-seconds 30
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --no-max-input-filter
-  python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --apply-data-qc
+  python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --no-apply-data-qc
 """
 from __future__ import annotations
 
@@ -84,12 +84,20 @@ def main() -> None:
         action="store_true",
         help="Override config: keep all clip lengths (set max_input_seconds to null).",
     )
-    parser.add_argument(
+    qc_flags = parser.add_mutually_exclusive_group()
+    qc_flags.add_argument(
+        "--no-apply-data-qc",
+        "--skip-data-qc",
+        action="store_true",
+        dest="skip_data_qc",
+        help="Disable multi-gate QC on train/eval (on by default unless config sets apply_data_qc: false).",
+    )
+    qc_flags.add_argument(
         "--apply-data-qc",
         "--aggressive-qc",
         action="store_true",
-        dest="apply_data_qc",
-        help="Enable multi-gate QC on train/eval (off by default; same gates as eval --aggressive-qc).",
+        dest="force_data_qc",
+        help="Force QC on even when config sets apply_data_qc: false.",
     )
     args = parser.parse_args()
 
@@ -126,9 +134,12 @@ def main() -> None:
         config.max_input_seconds = float(args.max_input_seconds)
         logger.info("CLI --max-input-seconds: max_input_seconds=%s", config.max_input_seconds)
 
-    if args.apply_data_qc:
+    if args.skip_data_qc:
+        config.apply_data_qc = False
+        logger.info("CLI --no-apply-data-qc: disabling training QC filters.")
+    elif args.force_data_qc:
         config.apply_data_qc = True
-        logger.info("CLI --apply-data-qc: enabling training QC filters.")
+        logger.info("CLI --apply-data-qc: forcing training QC filters on.")
 
     setup_seed(config.seed)
     huggingface_set_seed(config.seed)

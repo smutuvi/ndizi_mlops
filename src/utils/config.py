@@ -101,8 +101,8 @@ class ASRConfig:
     hub_model_id: Optional[str] = None
 
     # Multi-gate audio/text QC filter (ported from cleaned_ndizi_may_6.py).
-    # Off by default; set true + optional "qc_*" overrides to enable.
-    apply_data_qc: bool = False
+    # On by default; pass --no-apply-data-qc or set false in JSON to disable.
+    apply_data_qc: bool = True
     # When true with apply_data_qc, QC uses May 6-style ``__text_norm`` (see preprocessing.add_may6_text_norm_batch).
     qc_use_may6_text_norm: bool = False
     # MMS_FA word-aligned chunking for long train clips (only when apply_data_qc is true).

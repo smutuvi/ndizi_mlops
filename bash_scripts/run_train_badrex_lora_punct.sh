@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full Ndizi LoRA on badrex: custom punct vocab, oral norm, 10 epochs (QC off; pass --apply-data-qc to enable).
+# Full Ndizi LoRA on badrex: custom punct vocab, oral norm, QC on by default (--no-apply-data-qc to skip).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exec "${SCRIPT_DIR}/run_train_ndizi_w2vbert.sh" \

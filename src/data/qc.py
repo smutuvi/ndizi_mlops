@@ -1,7 +1,7 @@
 # src/data/qc.py — multi-gate audio/text quality control (ported from cleaned_ndizi_may_6.py).
 #
 # Activated via WhisperTrainingConfig / ASRConfig field:
-#   apply_data_qc: bool = False
+#   apply_data_qc: bool = True  (disable via --no-apply-data-qc or JSON false)
 # Optional long-audio chunking (only when apply_data_qc is true):
 #   qc_chunk_long_with_mms_fa: bool = False
 # Optional May 6 text normalization for QC gates only (training labels unchanged):
