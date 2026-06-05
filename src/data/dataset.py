@@ -298,6 +298,21 @@ def build_vocabulary(
     return vocab_dict
 
 
+def _uses_w2v_bert_features(config: ASRConfig, resolved: str) -> bool:
+    if resolved == "facebook/w2v-bert-2.0" or config.pretrained_model == "w2v-BERT":
+        return True
+    low = resolved.lower()
+    if "w2v-bert" in low or "w2vbert" in low:
+        return True
+    try:
+        from transformers import AutoConfig
+
+        mt = str(AutoConfig.from_pretrained(resolved).model_type or "").lower()
+        return mt in ("wav2vec2-bert", "wav2vec2_bert")
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def create_processor(config: ASRConfig, ctc_dir: str) -> ASRProcessor:
     tokenizer = Wav2Vec2CTCTokenizer.from_pretrained(
         ctc_dir,
@@ -306,7 +321,7 @@ def create_processor(config: ASRConfig, ctc_dir: str) -> ASRProcessor:
         word_delimiter_token="|",
     )
     resolved = config.get_pretrained_model_path()
-    if resolved == "facebook/w2v-bert-2.0" or config.pretrained_model == "w2v-BERT":
+    if _uses_w2v_bert_features(config, resolved):
         feature_extractor = SeamlessM4TFeatureExtractor.from_pretrained("facebook/w2v-bert-2.0")
         return Wav2Vec2BertProcessor(feature_extractor=feature_extractor, tokenizer=tokenizer)
     feature_extractor = Wav2Vec2FeatureExtractor(

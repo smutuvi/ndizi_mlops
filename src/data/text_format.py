@@ -14,6 +14,10 @@ _ORAL_WORD_FIXES: List[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bkunaa\b", re.IGNORECASE), "kuna"),
     (re.compile(r"\bpiya\b", re.IGNORECASE), "pia"),
     (re.compile(r"\bsanaa\b", re.IGNORECASE), "sana"),
+    # Ndizi field-interview oral variants (written refs use alizi / mauwa / marage).
+    (re.compile(r"\barizi\b", re.IGNORECASE), "alizi"),
+    (re.compile(r"\bmaua\b", re.IGNORECASE), "mauwa"),
+    (re.compile(r"\bmaharage\b", re.IGNORECASE), "marage"),
 ]
 
 _GLUE_AFTER_SENTENCE_END = re.compile(
