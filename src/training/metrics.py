@@ -27,14 +27,23 @@ def _to_numpy(x: Any) -> np.ndarray:
     return np.asarray(x)
 
 
-def preprocess_logits_for_metrics(logits: Any, labels: Any) -> np.ndarray:
-    """Store greedy token ids (batch, time); avoids saving full vocab logits on disk."""
+def preprocess_logits_for_metrics(logits: Any, labels: Any) -> Any:
+    """
+    Store greedy token ids (batch, time); avoids saving full vocab logits on disk.
+
+    Must return a **CPU torch.Tensor** — Trainer accumulates predictions with ``.cpu()``,
+    not numpy arrays.
+    """
+    import torch
+
     if isinstance(logits, (tuple, list)):
         logits = logits[0]
-    arr = _to_numpy(logits)
-    if arr.ndim >= 3:
-        return arr.argmax(axis=-1)
-    return arr
+    if not isinstance(logits, torch.Tensor):
+        logits = torch.as_tensor(logits)
+    logits = logits.detach()
+    if logits.ndim >= 3:
+        return logits.argmax(dim=-1).cpu()
+    return logits.cpu()
 
 
 def _prediction_token_ids(predictions: Any) -> np.ndarray:
