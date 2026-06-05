@@ -46,7 +46,7 @@ def resolve_columns(column_names: List[str]) -> tuple[str, str]:
     audio_col = pick_col(column_names, ["audio", "audio_path", "path", "file", "wav", "speech"])
     text_col = pick_col(
         column_names,
-        ["text", "transcript", "sentence", "transcription", "normalized_text"],
+        ["transcription", "transcript", "text", "sentence", "normalized_text"],
     )
     if audio_col is None:
         raise ValueError(f"No audio column in {column_names}")
@@ -101,6 +101,34 @@ def _ensure_transcription_column(dataset: Dataset, split_name: str) -> Dataset:
         f"No transcription column in {split_name}; expected text/transcript/transcription. "
         f"Columns: {dataset.column_names}"
     )
+
+
+def _normalize_merged_text_column(dataset: Dataset, split_name: str) -> Dataset:
+    """
+    Ensure one ``transcription`` column after merging Hub splits with mixed schemas.
+
+    Interleaving Ndizi (``transcription``) with badrex (``text``) leaves both columns;
+    coalesce non-empty values and drop the redundant label column.
+    """
+    cols = list(dataset.column_names)
+    if "transcription" in cols:
+        alt = pick_col(cols, ["text", "transcript", "sentence", "normalized_text"])
+        if alt:
+            trans = list(dataset["transcription"])
+            alt_vals = list(dataset[alt])
+            filled: List[str] = []
+            for t, a in zip(trans, alt_vals):
+                if t is not None and str(t).strip():
+                    filled.append(str(t))
+                elif a is not None and str(a).strip():
+                    filled.append(str(a))
+                else:
+                    filled.append("")
+            dataset = dataset.remove_columns(["transcription"])
+            dataset = dataset.add_column("transcription", filled)
+            dataset = dataset.remove_columns([alt])
+        return dataset
+    return _ensure_transcription_column(dataset, split_name)
 
 
 def _ensure_audio_duration_column(dataset: Dataset, split_name: str) -> Dataset:
@@ -303,15 +331,13 @@ def load_datasets(config: ASRConfig | WhisperTrainingConfig) -> Tuple[Dataset, D
         if len(train_splits) != len(train_ids):
             raise ValueError("train_splits must match train_datasets length")
         train_raw = merge_splits(train_ids, train_splits, audio_col, revision, config.train_weights)
-        if text_col != "transcription" and text_col in train_raw.column_names:
-            train_raw = train_raw.rename_column(text_col, "transcription")
+        train_raw = _normalize_merged_text_column(train_raw, "train")
         eval_ids = list(config.eval_datasets) if config.eval_datasets else train_ids
         eval_splits = config.eval_splits or ["validation"] * len(eval_ids)
         if len(eval_splits) != len(eval_ids):
             raise ValueError("eval_splits must match eval_datasets length")
         eval_raw = merge_splits(eval_ids, eval_splits, audio_col, revision, None)
-        if text_col != "transcription" and text_col in eval_raw.column_names:
-            eval_raw = eval_raw.rename_column(text_col, "transcription")
+        eval_raw = _normalize_merged_text_column(eval_raw, "validation")
     elif config.use_custom_dataset:
         if not config.dataset_path:
             raise ValueError("dataset_path required when use_custom_dataset is True")
