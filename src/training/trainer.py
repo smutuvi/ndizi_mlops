@@ -131,4 +131,25 @@ def create_asr_trainer(
     elif "tokenizer" in tr_sig.parameters:
         trainer_kw["tokenizer"] = processor
 
-    return Trainer(**{k: v for k, v in trainer_kw.items() if k in tr_sig.parameters})
+    trainer_cls = Trainer
+    try:
+        from peft import PeftModel
+
+        from src.models.ctc_factory import save_ctc_lora_checkpoint
+
+        class _CtcPeftTrainer(Trainer):
+            def _save(self, output_dir=None, state_dict=None):
+                if isinstance(self.model, PeftModel):
+                    save_ctc_lora_checkpoint(
+                        self.model,
+                        output_dir,
+                        state_dict=state_dict,
+                    )
+                    return
+                super()._save(output_dir, state_dict)
+
+        trainer_cls = _CtcPeftTrainer
+    except ImportError:
+        pass
+
+    return trainer_cls(**{k: v for k, v in trainer_kw.items() if k in tr_sig.parameters})

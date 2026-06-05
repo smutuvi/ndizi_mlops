@@ -202,7 +202,12 @@ def main() -> None:
 
     logger.info("Starting training…")
     trainer.train()
-    trainer.save_model(str(model_dir))
+    if scope == "lora":
+        from src.models.ctc_factory import save_ctc_lora_checkpoint
+
+        save_ctc_lora_checkpoint(model, str(model_dir))
+    else:
+        trainer.save_model(str(model_dir))
     processor.save_pretrained(str(model_dir))
     with open(model_dir / "training_config_resolved.json", "w", encoding="utf-8") as f:
         json.dump(asdict(config), f, default=str, indent=2)
