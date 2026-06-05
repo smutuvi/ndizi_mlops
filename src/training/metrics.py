@@ -16,11 +16,22 @@ from src.data.text_format import combined_asr_score, mean_punctuation_recall
 logger = logging.getLogger(__name__)
 
 
+def _to_numpy(x: Any) -> np.ndarray:
+    """Host numpy array from logits/predictions (Trainer may pass CUDA tensors)."""
+    try:
+        import torch
+    except ImportError:
+        torch = None  # type: ignore[assignment]
+    if torch is not None and isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)
+
+
 def preprocess_logits_for_metrics(logits: Any, labels: Any) -> np.ndarray:
     """Store greedy token ids (batch, time); avoids saving full vocab logits on disk."""
     if isinstance(logits, (tuple, list)):
         logits = logits[0]
-    arr = np.asarray(logits)
+    arr = _to_numpy(logits)
     if arr.ndim >= 3:
         return arr.argmax(axis=-1)
     return arr
@@ -33,7 +44,7 @@ def _prediction_token_ids(predictions: Any) -> np.ndarray:
     Do **not** argmax along time — that collapses each utterance to one token id
     (the max id in the row), which decodes as a single letter (e.g. ``\"n\"``).
     """
-    arr = np.asarray(predictions)
+    arr = _to_numpy(predictions)
     if arr.ndim >= 3:
         return arr.argmax(axis=-1)
     if arr.ndim == 2:
