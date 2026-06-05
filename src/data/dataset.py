@@ -18,7 +18,12 @@ from transformers import (
     Wav2Vec2Processor,
 )
 
-from src.data.preprocessing import add_may6_text_norm_batch, clean_text_batch, hub_ctc_identity_clean_batch
+from src.data.preprocessing import (
+    add_may6_text_norm_batch,
+    clean_text_batch,
+    hub_ctc_identity_clean_batch,
+)
+from src.data.text_format import format_transcription_batch
 from src.data.mms_fa_chunk import expand_long_examples_mms_fa, load_mms_fa_context
 from src.data.qc import apply_qc_filter, qc_config_for_training
 from src.utils.config import ASRConfig
@@ -336,6 +341,23 @@ def load_datasets(config: ASRConfig | WhisperTrainingConfig) -> Tuple[Dataset, D
     train_raw = _strip_columns(train_raw)
     eval_raw = _strip_columns(eval_raw)
 
+    if getattr(config, "format_transcripts", True):
+        fmt_kw = dict(
+            normalize_oral=bool(getattr(config, "normalize_oral_tokens", False)),
+        )
+        train_raw = train_raw.map(
+            lambda b: format_transcription_batch(b, **fmt_kw),
+            batched=True,
+            batch_size=64,
+            desc="format transcripts (train)",
+        )
+        eval_raw = eval_raw.map(
+            lambda b: format_transcription_batch(b, **fmt_kw),
+            batched=True,
+            batch_size=64,
+            desc="format transcripts (eval)",
+        )
+
     if config.sample:
         train_raw = train_raw.shuffle(seed=config.seed).select(range(min(config.sample_size, len(train_raw))))
         eval_raw = eval_raw.shuffle(seed=config.seed).select(range(min(2000, len(eval_raw))))
@@ -357,18 +379,18 @@ def load_datasets(config: ASRConfig | WhisperTrainingConfig) -> Tuple[Dataset, D
         train_raw = train_raw.map(hub_ctc_identity_clean_batch, batched=True, batch_size=64, desc="text (hub CTC)")
         eval_raw = eval_raw.map(hub_ctc_identity_clean_batch, batched=True, batch_size=64, desc="text (hub CTC)")
     else:
-        train_raw = train_raw.map(
-            lambda batch: clean_text_batch(batch, config.character_set, config.apply_accent_replacements),
-            batched=True,
-            batch_size=64,
-            desc="clean train text",
-        )
-        eval_raw = eval_raw.map(
-            lambda batch: clean_text_batch(batch, config.character_set, config.apply_accent_replacements),
-            batched=True,
-            batch_size=64,
-            desc="clean eval text",
-        )
+        lc = bool(getattr(config, "lowercase_ctc_labels", True))
+
+        def _clean(batch):
+            return clean_text_batch(
+                batch,
+                config.character_set,
+                config.apply_accent_replacements,
+                lowercase=lc,
+            )
+
+        train_raw = train_raw.map(_clean, batched=True, batch_size=64, desc="clean train text")
+        eval_raw = eval_raw.map(_clean, batched=True, batch_size=64, desc="clean eval text")
 
     if getattr(config, "apply_data_qc", False):
         qc_cfg = qc_config_for_training(config)

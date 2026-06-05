@@ -70,8 +70,10 @@ def create_training_args(config: ASRConfig, experiment_name: str) -> TrainingArg
         hub_model_id=config.hub_model_id,
         report_to=str(config.report_to),
         load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
+        metric_for_best_model=(
+            "score" if getattr(config, "use_formatting_score_for_best", False) else "wer"
+        ),
+        greater_is_better=bool(getattr(config, "use_formatting_score_for_best", False)),
         remove_unused_columns=False,
         seed=int(config.seed),
         data_seed=int(config.seed),

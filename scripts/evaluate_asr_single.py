@@ -133,6 +133,11 @@ def main() -> None:
         default=None,
         help="If set, write {\"text\": ...} to this path.",
     )
+    parser.add_argument(
+        "--no-format-decode",
+        action="store_true",
+        help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -284,6 +289,10 @@ def main() -> None:
         )
 
     text = pred_raw[0] if pred_raw else ""
+    if not args.no_format_decode:
+        from src.data.text_format import format_decode_output
+
+        text = format_decode_output(text)
     print(text, flush=True)
 
     if args.output_json:

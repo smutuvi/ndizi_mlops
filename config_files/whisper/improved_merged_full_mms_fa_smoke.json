@@ -11,7 +11,7 @@
   "batch_size": 1,
   "gradient_accumulation_steps": 8,
   "num_train_epochs": 1.0,
-  "learning_rate": 1e-5,
+  "learning_rate": 1e-05,
   "warmup_steps": 100,
   "weight_decay": 0.0,
   "fp16": true,
@@ -19,8 +19,14 @@
   "group_by_length": true,
   "eval_strategy": "epoch",
   "max_input_seconds": null,
-  "train_datasets": ["smutuvi/ndizi-1", "smutuvi/ndizi-1-2025"],
-  "train_splits": ["train", "train"],
+  "train_datasets": [
+    "smutuvi/ndizi-1",
+    "smutuvi/ndizi-1-2025"
+  ],
+  "train_splits": [
+    "train",
+    "train"
+  ],
   "train_weights": null,
   "oversample_prompt_templates": true,
   "oversample_prompt_factor": 2,
@@ -29,5 +35,10 @@
   "qc_chunk_long_with_mms_fa": true,
   "qc_chunk_seconds": 30.0,
   "qc_fa_device": "auto",
-  "trainable_scope": "full"
+  "trainable_scope": "full",
+  "format_transcripts": true,
+  "normalize_oral_tokens": false,
+  "qc_allow_sentence_punctuation": true,
+  "qc_chunk_long_with_mms_fa_eval": true,
+  "use_formatting_score_for_best": true
 }

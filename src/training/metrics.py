@@ -11,6 +11,7 @@ import evaluate
 from transformers.trainer_utils import PredictionOutput
 
 from src.data.dataset import ASRProcessor
+from src.data.text_format import combined_asr_score, mean_punctuation_recall
 
 logger = logging.getLogger(__name__)
 
@@ -57,5 +58,11 @@ class ASRMetrics:
         cer = self.cer_metric.compute(predictions=pred_str, references=label_str)
         wer_v = float(wer["wer"]) if isinstance(wer, dict) else float(wer)
         cer_v = float(cer["cer"]) if isinstance(cer, dict) else float(cer)
-        score = (1.0 - (0.5 * wer_v + 0.5 * cer_v)) * 100.0
-        return {"wer": wer_v, "cer": cer_v, "score": score}
+        punct_rec = mean_punctuation_recall(label_str, pred_str)
+        score = combined_asr_score(wer_v, cer_v, punct_rec)
+        return {
+            "wer": wer_v,
+            "cer": cer_v,
+            "punct_recall": punct_rec,
+            "score": score,
+        }

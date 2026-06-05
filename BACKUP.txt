@@ -1,0 +1,7 @@
+Pre-formatting/punctuation pipeline backup (2026-06-04):
+
+  ../ndizi_mlops_backup_20260604.tar
+
+Restore with:
+
+  cd .. && tar -xf ndizi_mlops_backup_20260604.tar

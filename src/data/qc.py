@@ -66,6 +66,8 @@ class QCConfig:
     max_words_per_sec: float = 4.5
     min_chars_per_sec: float = 4.0
     max_chars_per_sec: float = 25.0
+    # When true, standard sentence punctuation does not count toward weird_char_ratio.
+    allow_sentence_punctuation: bool = True
 
 
 def qc_config_from_dict(raw: Dict[str, Any]) -> QCConfig:
@@ -145,12 +147,19 @@ def _energy_vad_speech_ratio(
     return float(speech_frames) / float(n_frames)
 
 
-def _char_stats(text: str) -> Dict[str, float]:
+def _char_stats(text: str, *, allow_sentence_punctuation: bool = True) -> Dict[str, float]:
     if not text:
         return {"alpha_ratio": 0.0, "digit_ratio": 0.0, "weird_ratio": 0.0}
     n = len(text)
     digits = sum(ch.isdigit() for ch in text)
-    weird = sum(1 for ch in text if not (ch.isalnum() or ch.isspace() or ch in ("'", "-", "_")))
+    from src.data.text_format import SENTENCE_PUNCT_CHARS
+
+    extra_ok = set(SENTENCE_PUNCT_CHARS) if allow_sentence_punctuation else set()
+    weird = sum(
+        1
+        for ch in text
+        if not (ch.isalnum() or ch.isspace() or ch in ("'", "-", "_") or ch in extra_ok)
+    )
     return {"digit_ratio": digits / n, "weird_ratio": weird / n}
 
 
@@ -207,7 +216,7 @@ def check_example(
     if len(text_norm) > cfg.max_text_chars:
         return False, "text_long"
 
-    stats = _char_stats(text_norm)
+    stats = _char_stats(text_norm, allow_sentence_punctuation=cfg.allow_sentence_punctuation)
     if stats["weird_ratio"] > cfg.max_weird_char_ratio:
         return False, "weird_high"
     if _repetition_score(text_norm) > cfg.max_repetition_token_prop:

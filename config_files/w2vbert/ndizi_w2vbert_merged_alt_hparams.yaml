@@ -5,10 +5,15 @@ project: "Ndizi-Swahili-w2vbert"
 output_dir: "inprogress/ndizi-w2vbert-merged-alt-hparams"
 seed: 42
 
-pretrained_model: "facebook/wav2vec2-bert-rel-pos-large"
+pretrained_model: "facebook/w2v-bert-2.0"
 freeze_feature_encoder: true
-
-use_hub_ctc_checkpoint: true
+add_final_layer_adapter: true
+use_hub_ctc_checkpoint: false
+character_set: "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
+format_transcripts: true
+normalize_oral_tokens: false
+lowercase_ctc_labels: true
+use_formatting_score_for_best: true
 
 batch_size: 8
 per_device_eval_batch_size: 8

@@ -4,11 +4,15 @@ project: "Ndizi-Swahili-w2vbert"
 output_dir: "inprogress/ndizi-w2vbert-merged"
 seed: 42
 
-# CTC checkpoint with bundled tokenizer (Hub CTC; use use_hub_ctc_checkpoint).
-pretrained_model: "facebook/wav2vec2-bert-rel-pos-large"
-freeze_feature_encoder: false
-
-use_hub_ctc_checkpoint: true
+pretrained_model: "facebook/w2v-bert-2.0"
+freeze_feature_encoder: true
+add_final_layer_adapter: true
+use_hub_ctc_checkpoint: false
+character_set: "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
+format_transcripts: true
+normalize_oral_tokens: false
+lowercase_ctc_labels: true
+use_formatting_score_for_best: true
 
 batch_size: 4
 per_device_eval_batch_size: 4
@@ -39,10 +43,8 @@ train_datasets:
 train_splits:
   - "train"
   - "train"
-# Omit train_weights to concatenate (ndizi-1 then ndizi-1-2025). Set two floats to interleave.
 train_weights: null
 
-# null = same hub ids as train, validation splits (default in finetune script)
 eval_datasets: null
 eval_splits: null
 

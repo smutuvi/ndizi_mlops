@@ -44,14 +44,24 @@ _ACCENT_REPLACEMENTS = {
 }
 
 
+DEFAULT_CTC_CHARACTER_SET = "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
+
+
 def clean_text_batch(
     batch: Dict[str, Any],
-    allowed_chars: str = "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+    allowed_chars: str = DEFAULT_CTC_CHARACTER_SET,
     apply_accent_replacements: bool = True,
+    *,
+    lowercase: bool = True,
 ) -> Dict[str, Any]:
     allowed_char_set = set(allowed_chars)
     batch["clean_transcription"] = [
-        _clean_text_with_char_set(str(t or ""), allowed_char_set, apply_accent_replacements)
+        _clean_text_with_char_set(
+            str(t or ""),
+            allowed_char_set,
+            apply_accent_replacements,
+            lowercase=lowercase,
+        )
         for t in batch["transcription"]
     ]
     return batch
@@ -61,6 +71,8 @@ def _clean_text_with_char_set(
     text: str,
     character_set: set[str],
     apply_accent_replacements: bool = True,
+    *,
+    lowercase: bool = True,
 ) -> str:
     text = unicodedata.normalize("NFC", text)
     text = text.replace("'", "'").replace("ʼ", "'")
@@ -69,11 +81,11 @@ def _clean_text_with_char_set(
             text = text.replace(src, tgt)
     text = "".join(c for c in text if c.lower() in character_set)
     text = re.sub(r"\s+", " ", text).strip()
-    return text.lower()
+    return text.lower() if lowercase else text
 
 
 def hub_ctc_identity_clean_batch(batch: Dict[str, Any]) -> Dict[str, Any]:
-    """Minimal normalization when using a Hub CTC tokenizer (vocab not limited to ASCII)."""
+    """Strip only; preserve case and punctuation (Whisper / formatted labels)."""
     batch["clean_transcription"] = [str(t or "").strip() for t in batch["transcription"]]
     return batch
 

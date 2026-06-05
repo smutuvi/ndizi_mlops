@@ -2,13 +2,13 @@
   "project": "Ndizi-Swahili-w2vbert",
   "output_dir": "inprogress/ndizi-w2vbert-merged-alt-hparams",
   "seed": 42,
-  "pretrained_model": "facebook/wav2vec2-bert-rel-pos-large",
+  "pretrained_model": "facebook/w2v-bert-2.0",
   "freeze_feature_encoder": true,
   "batch_size": 8,
   "per_device_eval_batch_size": 8,
   "gradient_accumulation_steps": 4,
   "num_train_epochs": 25.0,
-  "learning_rate": 0.00003,
+  "learning_rate": 3e-05,
   "warmup_steps": 800,
   "weight_decay": 0.0,
   "fp16": true,
@@ -22,8 +22,20 @@
   "save_total_limit": 2,
   "max_input_seconds": 30.0,
   "normalize_wer": false,
-  "train_datasets": ["smutuvi/ndizi-1", "smutuvi/ndizi-1-2025"],
-  "train_splits": ["train", "train"],
+  "train_datasets": [
+    "smutuvi/ndizi-1",
+    "smutuvi/ndizi-1-2025"
+  ],
+  "train_splits": [
+    "train",
+    "train"
+  ],
   "push_to_hub": false,
-  "use_hub_ctc_checkpoint": true
+  "use_hub_ctc_checkpoint": false,
+  "format_transcripts": true,
+  "normalize_oral_tokens": false,
+  "lowercase_ctc_labels": true,
+  "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()",
+  "add_final_layer_adapter": true,
+  "use_formatting_score_for_best": true
 }

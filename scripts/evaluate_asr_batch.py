@@ -245,6 +245,52 @@ def pooled_wer_cer(
     )
 
 
+def compute_split_quality_metrics(
+    pred_raw: List[str],
+    ref_raw_col: List[str],
+    text_mode: str,
+    wer_m: Any,
+    cer_m: Any,
+    jiwer_tr_w: Any,
+    jiwer_tr_c: Any,
+) -> Dict[str, Any]:
+    """WER/CER (raw, no jiwer strip) plus optional normalized and punctuation recall."""
+    from src.data.text_format import mean_punctuation_recall
+
+    wer_v, cer_v = pooled_wer_cer(
+        list(pred_raw),
+        list(ref_raw_col),
+        "none",
+        wer_m,
+        cer_m,
+        jiwer_tr_w,
+        jiwer_tr_c,
+    )
+    out: Dict[str, Any] = {
+        "wer": wer_v,
+        "cer": cer_v,
+        "wer_raw": wer_v,
+        "cer_raw": cer_v,
+        "punct_recall": mean_punctuation_recall(list(ref_raw_col), list(pred_raw)),
+    }
+    if text_mode != "none":
+        wn, cn = pooled_wer_cer(
+            list(pred_raw),
+            list(ref_raw_col),
+            text_mode,
+            wer_m,
+            cer_m,
+            jiwer_tr_w,
+            jiwer_tr_c,
+        )
+        out["wer_normalized"] = wn
+        out["cer_normalized"] = cn
+        if text_mode == "jiwer_default":
+            out["wer_jiwer"] = wn
+            out["cer_jiwer"] = cn
+    return out
+
+
 def utterance_wer_cer(
     ref: str,
     hyp: str,
@@ -426,6 +472,7 @@ def clean_transcription_like_training(
     use_hub_ctc_checkpoint: bool,
     character_set: str,
     apply_accent_replacements: bool,
+    lowercase_ctc_labels: bool = True,
 ) -> str:
     """Same cleaning as ``src/data/dataset.py`` in ``load_datasets`` before encoding."""
     from src.data.preprocessing import clean_text_batch, hub_ctc_identity_clean_batch
@@ -433,7 +480,32 @@ def clean_transcription_like_training(
     batch = {"transcription": [str(raw or "")]}
     if use_hub_ctc_checkpoint:
         return hub_ctc_identity_clean_batch(batch)["clean_transcription"][0]
-    return clean_text_batch(batch, character_set, apply_accent_replacements)["clean_transcription"][0]
+    return clean_text_batch(
+        batch,
+        character_set,
+        apply_accent_replacements,
+        lowercase=lowercase_ctc_labels,
+    )["clean_transcription"][0]
+
+
+def eval_reference_like_training(raw: str, text_settings: Dict[str, Any]) -> str:
+    """Format + clean references the same way as training labels."""
+    from src.data.text_format import format_transcript
+
+    fmt = bool(text_settings.get("format_transcripts", True))
+    s = str(raw or "")
+    if fmt:
+        s = format_transcript(
+            s,
+            normalize_oral=bool(text_settings.get("normalize_oral_tokens", False)),
+        )
+    return clean_transcription_like_training(
+        s,
+        use_hub_ctc_checkpoint=bool(text_settings.get("use_hub_ctc_checkpoint", True)),
+        character_set=str(text_settings.get("character_set", "")),
+        apply_accent_replacements=bool(text_settings.get("apply_accent_replacements", True)),
+        lowercase_ctc_labels=bool(text_settings.get("lowercase_ctc_labels", True)),
+    )
 
 
 def load_eval_text_settings(
@@ -446,11 +518,16 @@ def load_eval_text_settings(
     ``<model_path>/training_config_resolved.json``. Whisper configs (``stack: whisper``)
     are detected via raw JSON/YAML so ``load_config`` (CTC-only) is not used for them.
     """
+    from src.data.preprocessing import DEFAULT_CTC_CHARACTER_SET
+
     defaults: Dict[str, Any] = {
         "stack": "ctc",
-        "use_hub_ctc_checkpoint": True,
-        "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 -'",
+        "use_hub_ctc_checkpoint": False,
+        "character_set": DEFAULT_CTC_CHARACTER_SET,
         "apply_accent_replacements": True,
+        "format_transcripts": True,
+        "normalize_oral_tokens": False,
+        "lowercase_ctc_labels": True,
         "config_path": None,
         "whisper_language": "sw",
         "whisper_task": "transcribe",
@@ -479,6 +556,9 @@ def load_eval_text_settings(
                     "use_hub_ctc_checkpoint": True,
                     "character_set": defaults["character_set"],
                     "apply_accent_replacements": True,
+                    "format_transcripts": bool(raw.get("format_transcripts", True)),
+                    "normalize_oral_tokens": bool(raw.get("normalize_oral_tokens", False)),
+                    "lowercase_ctc_labels": True,
                     "training_config_raw": dict(raw),
                 }
             cfg = load_config(p)
@@ -487,6 +567,9 @@ def load_eval_text_settings(
                 "use_hub_ctc_checkpoint": bool(cfg.use_hub_ctc_checkpoint),
                 "character_set": str(cfg.character_set),
                 "apply_accent_replacements": bool(cfg.apply_accent_replacements),
+                "format_transcripts": bool(cfg.format_transcripts),
+                "normalize_oral_tokens": bool(cfg.normalize_oral_tokens),
+                "lowercase_ctc_labels": bool(cfg.lowercase_ctc_labels),
                 "config_path": str(p),
                 "whisper_language": defaults["whisper_language"],
                 "whisper_task": defaults["whisper_task"],
@@ -785,7 +868,9 @@ def transcribe_batches_streaming(
                 seg_txt, seg_dt = decode_one_segment(seg, sr)
                 parts.append(seg_txt)
                 total_decode += seg_dt
-            preds.append(" ".join(parts))
+            from src.data.text_format import join_chunk_predictions
+
+            preds.append(join_chunk_predictions(parts))
             refs.append(ref)
             decode_times.append(total_decode)
             continue
@@ -915,7 +1000,9 @@ def transcribe_whisper_batches_streaming(
                 seg_txt, seg_dt = decode_one_segment(seg, sr)
                 parts.append(seg_txt)
                 total_decode += seg_dt
-            preds.append(" ".join(parts))
+            from src.data.text_format import join_chunk_predictions
+
+            preds.append(join_chunk_predictions(parts))
             refs.append(ref)
             decode_times.append(total_decode)
             continue
@@ -1039,6 +1126,11 @@ def main() -> None:
         "--cuda_empty_cache",
         action="store_true",
         help="Call torch.cuda.empty_cache() after each forward (slower; can help fragmentation).",
+    )
+    parser.add_argument(
+        "--no-format-decode",
+        action="store_true",
+        help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
     )
     args = parser.parse_args()
 
@@ -1238,6 +1330,9 @@ def main() -> None:
             }
             continue
 
+        for r in rows_meta:
+            r["reference"] = eval_reference_like_training(r["reference"], text_settings)
+
         if decode_backend == "whisper":
             pred_raw, ref_raw_col, decode_times = transcribe_whisper_batches_streaming(
                 ds,
@@ -1268,36 +1363,23 @@ def main() -> None:
                 cuda_empty_cache=bool(args.cuda_empty_cache),
             )
 
-        wer_v, cer_v = pooled_wer_cer(
-            list(pred_raw),
-            list(ref_raw_col),
-            "none",
-            wer_m,
-            cer_m,
-            jiwer_tr_w,
-            jiwer_tr_c,
+        if not args.no_format_decode:
+            from src.data.text_format import format_decode_output
+
+            pred_raw = [format_decode_output(p) for p in pred_raw]
+
+        qm = compute_split_quality_metrics(
+            pred_raw, ref_raw_col, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c
         )
+        wer_v, cer_v = qm["wer"], qm["cer"]
 
         key = f"{spec.dataset_id}:{spec.split}"
         per_set[key] = {
-            "wer": wer_v,
-            "cer": cer_v,
+            **{k: v for k, v in qm.items() if k not in ("wer_raw", "cer_raw")},
             "n": len(rows_meta),
             "dropped_long": dropped,
             "dropped_qc": dropped_qc,
         }
-        if text_mode != "none":
-            wn, cn = pooled_wer_cer(
-                list(pred_raw),
-                list(ref_raw_col),
-                text_mode,
-                wer_m,
-                cer_m,
-                jiwer_tr_w,
-                jiwer_tr_c,
-            )
-            per_set[key]["wer_normalized"] = wn
-            per_set[key]["cer_normalized"] = cn
         log.info("%s WER=%s CER=%s n=%d", key, wer_v, cer_v, len(rows_meta))
 
         all_pred_raw.extend(pred_raw)
@@ -1309,6 +1391,8 @@ def main() -> None:
             dwall = float(decode_times[j]) if j < len(decode_times) else 0.0
             rx = rtfx_from_times(dur, dwall)
             wu, cu = utterance_wer_cer(ref_j, pred_j, "none", wer_m, cer_m, jiwer_tr_w, jiwer_tr_c)
+            from src.data.text_format import punctuation_recall
+
             rec: Dict[str, Any] = {
                 "dataset": spec.dataset_id,
                 "split": spec.split,
@@ -1319,6 +1403,7 @@ def main() -> None:
                 "prediction": pred_j,
                 "wer": wu,
                 "cer": cu,
+                "punct_recall": punctuation_recall(ref_j, pred_j),
                 "decode_wall_s": dwall if dwall > 0.0 else None,
                 "rtfx": rx,
             }
@@ -1331,36 +1416,17 @@ def main() -> None:
                 rec["rtfx_normalized"] = rx
             predictions_out.append(rec)
 
-    pooled_wer, pooled_cer = pooled_wer_cer(
-        all_pred_raw,
-        all_ref_raw,
-        "none",
-        wer_m,
-        cer_m,
-        jiwer_tr_w,
-        jiwer_tr_c,
-    )
     pool_pairs = [(p, r) for p, r in zip(all_pred_raw, all_ref_raw) if str(r).strip()]
 
+    pooled_qm = compute_split_quality_metrics(
+        all_pred_raw, all_ref_raw, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c
+    )
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     pooled: Dict[str, Any] = {
-        "wer": pooled_wer,
-        "cer": pooled_cer,
+        **{k: v for k, v in pooled_qm.items() if k not in ("wer_raw", "cer_raw")},
         "n_utterances": len(pool_pairs),
     }
-    if text_mode != "none":
-        pn_wer, pn_cer = pooled_wer_cer(
-            all_pred_raw,
-            all_ref_raw,
-            text_mode,
-            wer_m,
-            cer_m,
-            jiwer_tr_w,
-            jiwer_tr_c,
-        )
-        pooled["wer_normalized"] = pn_wer
-        pooled["cer_normalized"] = pn_cer
 
     metrics: Dict[str, Any] = {
         "text_normalize": text_mode,
@@ -1381,6 +1447,7 @@ def main() -> None:
             "training_text_settings": {k: v for k, v in text_settings.items() if k != "training_config_raw"},
             "aggressive_qc": bool(qc_bundle),
             "qc_use_may6_text_norm": qc_bundle[1] if qc_bundle else None,
+            "format_decode": not bool(args.no_format_decode),
         },
     }
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -1389,7 +1456,7 @@ def main() -> None:
     )
     _write_predictions_csv(out_dir / "predictions.csv", predictions_out, text_mode)
     log.info("Wrote %s, %s, and %s", out_dir / "metrics.json", out_dir / "predictions.json", out_dir / "predictions.csv")
-    log.info("Pooled WER=%s CER=%s (n=%d)", pooled_wer, pooled_cer, len(pool_pairs))
+    log.info("Pooled WER=%s CER=%s (n=%d)", pooled_qm.get("wer"), pooled_qm.get("cer"), len(pool_pairs))
 
 
 if __name__ == "__main__":

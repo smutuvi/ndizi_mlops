@@ -233,8 +233,10 @@ def create_whisper_seq2seq_training_args(
         hub_model_id=config.hub_model_id,
         report_to=str(config.report_to),
         load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
+        metric_for_best_model=(
+            "score" if getattr(config, "use_formatting_score_for_best", False) else "wer"
+        ),
+        greater_is_better=bool(getattr(config, "use_formatting_score_for_best", False)),
         predict_with_generate=True,
         generation_max_length=int(generation_max_length),
         generation_num_beams=int(config.generation_num_beams),
@@ -265,6 +267,7 @@ def create_whisper_seq2seq_training_args(
 
 def build_whisper_compute_metrics(processor, wer_metric, cer_metric, normalize_wer: bool):
     from src.data.preprocessing import wer_normalize as _norm
+    from src.data.text_format import combined_asr_score, mean_punctuation_recall
 
     def compute_metrics(pred) -> dict[str, float]:
         pred_ids = pred.predictions
@@ -281,8 +284,9 @@ def build_whisper_compute_metrics(processor, wer_metric, cer_metric, normalize_w
         cer = cer_metric.compute(predictions=pred_str, references=label_str)
         wer_v = float(wer["wer"]) if isinstance(wer, dict) else float(wer)
         cer_v = float(cer["cer"]) if isinstance(cer, dict) else float(cer)
-        score = (1.0 - (0.5 * wer_v + 0.5 * cer_v)) * 100.0
-        return {"wer": wer_v, "cer": cer_v, "score": score}
+        punct_rec = mean_punctuation_recall(label_str, pred_str)
+        score = combined_asr_score(wer_v, cer_v, punct_rec)
+        return {"wer": wer_v, "cer": cer_v, "punct_recall": punct_rec, "score": score}
 
     return compute_metrics
 

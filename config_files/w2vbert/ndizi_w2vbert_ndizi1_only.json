@@ -21,8 +21,16 @@
   "save_total_limit": 2,
   "max_input_seconds": 30.0,
   "normalize_wer": false,
-  "train_datasets": ["smutuvi/ndizi-1"],
-  "train_splits": ["train"],
+  "train_datasets": [
+    "smutuvi/ndizi-1"
+  ],
+  "train_splits": [
+    "train"
+  ],
   "push_to_hub": false,
-  "use_hub_ctc_checkpoint": true
+  "use_hub_ctc_checkpoint": true,
+  "format_transcripts": true,
+  "normalize_oral_tokens": false,
+  "lowercase_ctc_labels": true,
+  "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
 }

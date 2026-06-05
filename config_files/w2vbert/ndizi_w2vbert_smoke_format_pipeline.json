@@ -1,6 +1,6 @@
 {
-  "project": "Ndizi-Swahili-w2vbert",
-  "output_dir": "inprogress/ndizi-w2vbert-merged-1epoch-w2vbert20",
+  "project": "Ndizi-W2VBERT-Smoke-1Epoch-Full",
+  "output_dir": "inprogress/smoke-w2vbert-format-pipeline-1epoch-full",
   "seed": 42,
   "pretrained_model": "facebook/w2v-bert-2.0",
   "freeze_feature_encoder": true,
@@ -9,12 +9,17 @@
   "character_set": "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()",
   "apply_accent_replacements": true,
   "add_language_tokens": false,
+  "format_transcripts": true,
+  "normalize_oral_tokens": false,
+  "lowercase_ctc_labels": true,
+  "use_formatting_score_for_best": true,
+  "sample": false,
   "batch_size": 4,
   "per_device_eval_batch_size": 4,
-  "gradient_accumulation_steps": 4,
+  "gradient_accumulation_steps": 2,
   "num_train_epochs": 1.0,
   "learning_rate": 3e-05,
-  "warmup_steps": 500,
+  "warmup_steps": 50,
   "weight_decay": 0.0,
   "fp16": true,
   "bf16": false,
@@ -22,21 +27,11 @@
   "group_by_length": true,
   "eval_strategy": "epoch",
   "eval_steps": 500,
-  "logging_steps": 50,
-  "save_total_limit": 2,
+  "logging_steps": 10,
+  "save_total_limit": 1,
   "max_input_seconds": 30.0,
   "normalize_wer": false,
-  "train_datasets": [
-    "smutuvi/ndizi-1",
-    "smutuvi/ndizi-1-2025"
-  ],
-  "train_splits": [
-    "train",
-    "train"
-  ],
-  "push_to_hub": false,
-  "format_transcripts": true,
-  "normalize_oral_tokens": false,
-  "lowercase_ctc_labels": true,
-  "use_formatting_score_for_best": true
+  "train_datasets": ["smutuvi/ndizi-1", "smutuvi/ndizi-1-2025"],
+  "train_splits": ["train", "train"],
+  "push_to_hub": false
 }

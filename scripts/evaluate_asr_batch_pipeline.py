@@ -70,16 +70,21 @@ def extract_pipeline_text(result: Any) -> str:
             return str(text).strip()
         chunks = result.get("chunks")
         if isinstance(chunks, list):
+            from src.data.text_format import join_chunk_predictions
+
             parts = [str(c.get("text", "")).strip() for c in chunks if isinstance(c, dict)]
-            return " ".join(p for p in parts if p)
+            return join_chunk_predictions(parts)
         return ""
     if isinstance(result, list):
         if not result:
             return ""
+        from src.data.text_format import join_chunk_predictions
+
         if isinstance(result[0], dict) and "text" in result[0]:
-            return " ".join(str(x.get("text", "")).strip() for x in result if isinstance(x, dict))
+            parts = [str(x.get("text", "")).strip() for x in result if isinstance(x, dict)]
+            return join_chunk_predictions(parts)
         if isinstance(result[0], str):
-            return " ".join(str(x).strip() for x in result)
+            return join_chunk_predictions([str(x).strip() for x in result])
         return extract_pipeline_text(result[0])
     return str(result).strip()
 
@@ -232,6 +237,11 @@ def main() -> None:
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "mps", "cpu"])
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--cuda_empty_cache", action="store_true")
+    parser.add_argument(
+        "--no-format-decode",
+        action="store_true",
+        help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -416,6 +426,9 @@ def main() -> None:
             }
             continue
 
+        for r in rows_meta:
+            r["reference"] = eb.eval_reference_like_training(r["reference"], text_settings)
+
         pred_raw, ref_raw_col, decode_times = transcribe_split_with_pipeline(
             ds,
             audio_col,
@@ -428,36 +441,23 @@ def main() -> None:
         if args.cuda_empty_cache and device.type == "cuda":
             torch.cuda.empty_cache()
 
-        wer_v, cer_v = eb.pooled_wer_cer(
-            list(pred_raw),
-            list(ref_raw_col),
-            "none",
-            wer_m,
-            cer_m,
-            jiwer_tr_w,
-            jiwer_tr_c,
+        if not args.no_format_decode:
+            from src.data.text_format import format_decode_output
+
+            pred_raw = [format_decode_output(p) for p in pred_raw]
+
+        qm = eb.compute_split_quality_metrics(
+            pred_raw, ref_raw_col, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c
         )
+        wer_v, cer_v = qm["wer"], qm["cer"]
 
         key = f"{spec.dataset_id}:{spec.split}"
         per_set[key] = {
-            "wer": wer_v,
-            "cer": cer_v,
+            **{k: v for k, v in qm.items() if k not in ("wer_raw", "cer_raw")},
             "n": len(rows_meta),
             "dropped_long": dropped,
             "dropped_qc": dropped_qc,
         }
-        if text_mode != "none":
-            wn, cn = eb.pooled_wer_cer(
-                list(pred_raw),
-                list(ref_raw_col),
-                text_mode,
-                wer_m,
-                cer_m,
-                jiwer_tr_w,
-                jiwer_tr_c,
-            )
-            per_set[key]["wer_normalized"] = wn
-            per_set[key]["cer_normalized"] = cn
         log.info("%s WER=%s CER=%s n=%d", key, wer_v, cer_v, len(rows_meta))
 
         all_pred_raw.extend(pred_raw)
@@ -469,6 +469,8 @@ def main() -> None:
             dwall = float(decode_times[j]) if j < len(decode_times) else 0.0
             rx = eb.rtfx_from_times(dur, dwall)
             wu, cu = eb.utterance_wer_cer(ref_j, pred_j, "none", wer_m, cer_m, jiwer_tr_w, jiwer_tr_c)
+            from src.data.text_format import punctuation_recall
+
             rec: Dict[str, Any] = {
                 "dataset": spec.dataset_id,
                 "split": spec.split,
@@ -479,6 +481,7 @@ def main() -> None:
                 "prediction": pred_j,
                 "wer": wu,
                 "cer": cu,
+                "punct_recall": punctuation_recall(ref_j, pred_j),
                 "decode_wall_s": dwall if dwall > 0.0 else None,
                 "rtfx": rx,
             }
@@ -491,36 +494,17 @@ def main() -> None:
                 rec["rtfx_normalized"] = rx
             predictions_out.append(rec)
 
-    pooled_wer, pooled_cer = eb.pooled_wer_cer(
-        all_pred_raw,
-        all_ref_raw,
-        "none",
-        wer_m,
-        cer_m,
-        jiwer_tr_w,
-        jiwer_tr_c,
-    )
     pool_pairs = [(p, r) for p, r in zip(all_pred_raw, all_ref_raw) if str(r).strip()]
+    pooled_qm = eb.compute_split_quality_metrics(
+        all_pred_raw, all_ref_raw, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c
+    )
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     pooled: Dict[str, Any] = {
-        "wer": pooled_wer,
-        "cer": pooled_cer,
+        **{k: v for k, v in pooled_qm.items() if k not in ("wer_raw", "cer_raw")},
         "n_utterances": len(pool_pairs),
     }
-    if text_mode != "none":
-        pn_wer, pn_cer = eb.pooled_wer_cer(
-            all_pred_raw,
-            all_ref_raw,
-            text_mode,
-            wer_m,
-            cer_m,
-            jiwer_tr_w,
-            jiwer_tr_c,
-        )
-        pooled["wer_normalized"] = pn_wer
-        pooled["cer_normalized"] = pn_cer
 
     metrics: Dict[str, Any] = {
         "text_normalize": text_mode,
@@ -542,6 +526,7 @@ def main() -> None:
             "training_text_settings": {k: v for k, v in text_settings.items() if k != "training_config_raw"},
             "aggressive_qc": bool(qc_bundle),
             "qc_use_may6_text_norm": qc_bundle[1] if qc_bundle else None,
+            "format_decode": not bool(args.no_format_decode),
             "whisper_generate_kwargs": generate_kwargs if decode_backend == "whisper" else None,
         },
     }
@@ -551,7 +536,7 @@ def main() -> None:
     )
     eb._write_predictions_csv(out_dir / "predictions.csv", predictions_out, text_mode)
     log.info("Wrote %s, %s, and %s", out_dir / "metrics.json", out_dir / "predictions.json", out_dir / "predictions.csv")
-    log.info("Pooled WER=%s CER=%s (n=%d)", pooled_wer, pooled_cer, len(pool_pairs))
+    log.info("Pooled WER=%s CER=%s (n=%d)", pooled_qm.get("wer"), pooled_qm.get("cer"), len(pool_pairs))
 
 
 if __name__ == "__main__":

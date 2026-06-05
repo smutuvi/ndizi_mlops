@@ -134,6 +134,11 @@ def _segment_by_word_times(
     return segs
 
 
+def _word_spans_in_text(text: str) -> List[tuple[int, int]]:
+    """Character spans of whitespace-delimited tokens (preserves glued punctuation)."""
+    return [(m.start(), m.end()) for m in re.finditer(r"\S+", str(text or ""))]
+
+
 def _slice_text_by_fa_word_span(
     text: str,
     *,
@@ -141,19 +146,41 @@ def _slice_text_by_fa_word_span(
     word_end_exclusive: int,
     n_fa_words: int,
 ) -> str:
-    """Map FA word span to a substring of ``text`` (whitespace-tokenized)."""
-    words = str(text or "").strip().split()
-    if not words or n_fa_words <= 0 or word_end_exclusive <= word_start:
+    """Map FA word span to a substring of ``text`` using original token boundaries."""
+    from src.data.text_format import format_transcript
+
+    raw = str(text or "").strip()
+    if not raw or n_fa_words <= 0 or word_end_exclusive <= word_start:
         return ""
-    if len(words) == n_fa_words:
-        i0 = max(0, min(word_start, len(words)))
-        i1 = max(i0, min(word_end_exclusive, len(words)))
-        return " ".join(words[i0:i1]).strip()
-    i0 = int(round(word_start * len(words) / n_fa_words))
-    i1 = int(round(word_end_exclusive * len(words) / n_fa_words))
-    i1 = max(i1, i0 + 1) if word_end_exclusive > word_start else i0
-    i1 = min(i1, len(words))
-    return " ".join(words[i0:i1]).strip()
+
+    spans = _word_spans_in_text(raw)
+    n_words = len(spans)
+    if n_words == 0:
+        return ""
+
+    if n_words == n_fa_words:
+        i0 = max(0, min(word_start, n_words))
+        i1 = max(i0, min(word_end_exclusive, n_words))
+    else:
+        i0 = int(round(word_start * n_words / n_fa_words))
+        i1 = int(round(word_end_exclusive * n_words / n_fa_words))
+        i1 = max(i1, i0 + 1) if word_end_exclusive > word_start else i0
+        i0 = max(0, min(i0, n_words))
+        i1 = max(i0, min(i1, n_words))
+
+    if i0 >= n_words:
+        return ""
+
+    start = spans[i0][0]
+    end = spans[i1 - 1][1]
+    chunk = raw[start:end]
+    if i1 < n_words:
+        between = raw[end : spans[i1][0]]
+        trail = re.match(r"^\s*([.!?;:]+)\s*", between)
+        if trail:
+            chunk = raw[start : end] + trail.group(1)
+
+    return format_transcript(chunk.strip())
 
 
 def _fa_sanitize_words_for_mms_fa(text_norm: str, *, allowed_chars: set[str]) -> List[str]:

@@ -6,6 +6,9 @@ pretrained_model: "facebook/wav2vec2-bert-rel-pos-large"
 freeze_feature_encoder: false
 
 use_hub_ctc_checkpoint: true
+format_transcripts: true
+normalize_oral_tokens: false
+lowercase_ctc_labels: true
 
 batch_size: 4
 per_device_eval_batch_size: 4

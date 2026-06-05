@@ -11,6 +11,10 @@ add_final_layer_adapter: true
 
 use_hub_ctc_checkpoint: false
 character_set: "abcdefghijklmnopqrstuvwxyz0123456789 .,?!-':/%()"
+format_transcripts: true
+normalize_oral_tokens: false
+lowercase_ctc_labels: true
+use_formatting_score_for_best: true
 apply_accent_replacements: true
 add_language_tokens: false
 

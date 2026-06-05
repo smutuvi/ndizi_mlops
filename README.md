@@ -1,114 +1,113 @@
-# Ndizi Swahili — w2v-BERT CTC bundle
+# ndizi_mlops
 
-Self-contained layout: **`config_files/w2vbert/`** (Hub CTC / w2v-BERT), **`config_files/whisper/`** (Whisper), **`src/`** (data, model factory, training), **`scripts/train_model.py`** (CTC training), **`scripts/train_whisper.py`** (Whisper), and **`scripts/evaluate_asr_batch.py`** (batched test evaluation).
+Training and evaluation toolkit for **Ndizi Swahili ASR** on Hugging Face datasets ([`smutuvi/ndizi-1`](https://huggingface.co/datasets/smutuvi/ndizi-1), [`smutuvi/ndizi-1-2025`](https://huggingface.co/datasets/smutuvi/ndizi-1-2025)). Supports two stacks:
 
-## Prerequisites
+| Stack | Entry script | Configs |
+|-------|--------------|---------|
+| **w2v-BERT CTC** | `scripts/train_model.py` | `config_files/w2vbert/` |
+| **Whisper** | `scripts/train_whisper.py` | `config_files/whisper/` |
 
-- Python with **torch**, **transformers**, **datasets**, **evaluate**, **tqdm** (see [`../requirements.txt`](../requirements.txt) when this folder lives under `May_4_experiment/`).
-- Optional: **PyYAML** if you use `.yaml` configs (`.json` needs only the stdlib).
-- GPU recommended.
+Batched test-set evaluation: `scripts/evaluate_asr_batch.py` (CTC and Whisper). Past runs are under `eval/`.
 
-## Quick start
+## Setup
 
 ```bash
-cd /path/to/ndizi_mlops
-pip install -r ../requirements.txt   # adjust path to your requirements file
-
-chmod +x bash_scripts/run_train_ndizi_w2vbert.sh bash_scripts/run_train_ndizi_whisper.sh bash_scripts/run_eval_asr_batch.sh
-./bash_scripts/run_train_ndizi_w2vbert.sh
-# Whisper training (optional config path as first argument):
-# ./bash_scripts/run_train_ndizi_whisper.sh
-# Batched eval (CTC or Whisper; pass through all evaluate_asr_batch.py flags):
-# ./bash_scripts/run_eval_asr_batch.sh --model_path ... --output_dir eval/run1 --test_datasets smutuvi/ndizi-1:test
-
-# Or directly:
-python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json
-
-# Drop clips longer than 30s for this run (overrides config max_input_seconds):
-python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged_10epoch.json --max-input-seconds 30
-
-# Keep all lengths even if the config caps duration:
-python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --no-max-input-filter
+git clone https://github.com/smutuvi/ndizi_mlops.git
+cd ndizi_mlops
+pip install torch transformers datasets evaluate tqdm
+# Optional: PyYAML for .yaml configs (.json needs only stdlib)
 ```
 
-`bash_scripts/run_train_ndizi_w2vbert.sh` sets cache env vars then invokes `scripts/train_model.py`. **`bash_scripts/run_train_ndizi_whisper.sh`** does the same for **`scripts/train_whisper.py`**. **`bash_scripts/run_eval_asr_batch.sh`** forwards all arguments to **`scripts/evaluate_asr_batch.py`** (works for CTC and Whisper; use **`--backend auto`** by default so Whisper runs are detected from `training_config_resolved.json`).
-
-## Evaluation (batched Hub test splits)
-
-[`scripts/evaluate_asr_batch.py`](scripts/evaluate_asr_batch.py) loads your saved checkpoint, decodes in batches, and writes **`metrics.json`** (per-split + **pooled** WER/CER) and **`predictions.json`** (one record per utterance). Mono ASR only (no language-ID head). Text cleaning and WER reference formatting follow **`train_model.py`** when **`training_config_resolved.json`** sits next to the checkpoint (or pass **`--training_config`**). By default there is **no** max-audio cap (same idea as the upstream mono batch eval); pass **`--max_audio_seconds 30`** to skip clips longer than training **`max_input_seconds`**.
+Copy secrets locally (not in git):
 
 ```bash
-cd /path/to/ndizi_mlops
+# .env — HF_TOKEN, cache dirs, etc.
+export HF_TOKEN=...
+```
 
-python3 scripts/evaluate_asr_batch.py \
-  --model_path inprogress/ndizi-w2vbert-merged-1epoch-w2vbert20/facebook-w2v-bert-2.0-DDMMYYYY-HHMMSS \
+GPU recommended.
+
+## Train
+
+**w2v-BERT (Hub CTC or custom char vocab on w2v-bert-2.0):**
+
+```bash
+./bash_scripts/run_train_ndizi_w2vbert.sh
+# or
+python scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json
+```
+
+**Whisper:**
+
+```bash
+./bash_scripts/run_train_ndizi_whisper.sh config_files/whisper/ndizi_whisper_large_v3_turbo_merged.json
+```
+
+**Duration filter (CLI overrides config):**
+
+```bash
+python scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged_10epoch.json --max-input-seconds 30
+python scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --no-max-input-filter
+```
+
+Checkpoints land in `output_dir/<experiment_name>/` with `training_config_resolved.json` and `metrics.json`. Local weights are gitignored under `inprogress/`.
+
+## Evaluate
+
+```bash
+python scripts/evaluate_asr_batch.py \
+  --model_path inprogress/your-run/checkpoint-best \
   --test_datasets smutuvi/ndizi-1:test smutuvi/ndizi-1-2025:test \
-  --output_dir eval/my_run_test \
+  --output_dir eval/my_run \
   --batch_size 8 \
   --max_audio_seconds 30
 ```
 
-Use **`--processor_path`** only if `AutoProcessor.from_pretrained(model_path)` fails (then point at the directory that contains `preprocessor_config.json` + tokenizer next to your `ctc_tokenizer/`).
+Writes **`metrics.json`** (per-split + pooled WER/CER) and **`predictions.json`**. Uses `training_config_resolved.json` next to the checkpoint for text normalization (or pass `--training_config`).
 
-**CUDA memory:** decoding streams features per batch (no full-split precompute). If you still OOM on long clips, try **`--chunk_long_audio_seconds 30`** (chunked greedy decode, preds joined with spaces), **`--fp16`**, smaller **`--batch_size`**, or **`--max_audio_seconds 30`**. You can also set **`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`** to reduce fragmentation. The previous “precompute every row” driver is kept as [`scripts/evaluate_asr_batch_backup_precompute_all_rows.py`](scripts/evaluate_asr_batch_backup_precompute_all_rows.py) for tiny splits or comparison only.
+Wrapper: `./bash_scripts/run_eval_asr_batch.sh` (forwards all flags). For OOM on long audio: `--chunk_long_audio_seconds 30`, `--fp16`, smaller `--batch_size`.
 
-For CSV output, chunking, or QC filters, you can still use [`../evaluate_w2v_bert_ctc.py`](../evaluate_w2v_bert_ctc.py) from `May_4_experiment/` with the same `--model_id`.
+Pipeline eval with extra preprocessing: `scripts/evaluate_asr_batch_pipeline.py` and `bash_scripts/run_eval_asr_batch_pipeline.sh` (same reference formatting, post-decode cleanup, and `punct_recall` as `evaluate_asr_batch.py`).
 
-## `src/` layout (what was added)
+## Repository layout
 
-| Module | Role |
-|--------|------|
-| `src/utils/config.py` | `ASRConfig` dataclass + JSON/YAML `load_config` |
-| `src/utils/cache.py` | Stubs for optional encoded-dataset caching |
-| `src/data/dataset.py` | `load_datasets` (merged Hub ids or single `dataset_path`), `load_hub_processor`, optional custom `create_processor` / `build_vocabulary` for non–Hub-CTC bases |
-| `src/data/preprocessing.py` | Text cleaning or identity pass for Hub CTC |
-| `src/data/dataset_encoders.py` | `ASRDatasetEncoder` → model inputs + `labels` |
-| `src/models/factory.py` | `create_asr_model` (Hub CTC) and `create_asr_model_for_custom_vocab` (e.g. `w2v-bert-2.0` + built vocab) |
-| `src/training/collator.py` | `DataCollatorCTCWithPadding` |
-| `src/training/metrics.py` | WER/CER + optional prediction JSON dumps |
-| `src/training/trainer.py` | `TrainingArguments` + `Trainer` wiring |
+```
+config_files/w2vbert/   # CTC experiment JSON/YAML
+config_files/whisper/   # Whisper experiment JSON
+scripts/                # train_* and evaluate_* CLIs
+src/                    # data loading, QC, models, trainers
+bash_scripts/           # thin wrappers (cache env + python)
+eval/                   # committed metrics/predictions from past runs
+```
 
-## Config
+| `src/` area | Role |
+|-------------|------|
+| `data/dataset.py` | Load/merge Hub datasets, processors |
+| `data/text_format.py` | Transcript formatting + punctuation recall metrics |
+| `data/qc.py` | Optional clip filters (duration, weird-ratio, etc.) |
+| `models/factory.py` | Hub CTC or w2v-bert-2.0 + custom vocab |
+| `training/trainer.py` | Hugging Face `Trainer` wiring (CTC) |
+| `training/whisper_trainer.py` | Whisper fine-tuning |
+| `utils/config.py` | `ASRConfig` + JSON/YAML load |
 
-Configs live under **`config_files/w2vbert/`** (Hub CTC / w2v-BERT; use with `scripts/train_model.py`) and **`config_files/whisper/`** (set `"stack": "whisper"`; use with `scripts/train_whisper.py`). Each w2v-BERT experiment stem has a **`.json`** and matching **`.yaml`** in `w2vbert/`.
+## Config notes
 
-| Path (under `config_files/w2vbert/`) | Purpose |
-|------|---------|
-| `ndizi_w2vbert_merged` | `smutuvi/ndizi-1` + `smutuvi/ndizi-1-2025`, pooled `validation` |
-| `ndizi_w2vbert_ndizi1_only` | `smutuvi/ndizi-1` only |
-| `ndizi_w2vbert_2025_only` | `smutuvi/ndizi-1-2025` only |
-| `ndizi_w2vbert_merged_alt_hparams` | Merged data; larger batch, step-based eval |
-| `ndizi_w2vbert_merged_1epoch` | Merged data, **1 epoch**, **`facebook/w2v-bert-2.0`** + custom char vocab (`use_hub_ctc_checkpoint: false`) |
-| `ndizi_w2vbert_merged_10epoch` | Merged w2v-bert-2.0, **10 epochs**; **`max_input_seconds: null`** keeps all clip lengths—use **`--max-input-seconds 30`** when you want a 30s cap without editing the file |
+- **`max_input_seconds`**: drop clips longer than N seconds; set `null` when using MMS-FA chunking (`qc_chunk_long_with_mms_fa`).
+- **`format_transcripts`** (default `true`): spacing after `.?!`, comma glue fixes via `src/data/text_format.py` before `clean_transcription`.
+- **`use_hub_ctc_checkpoint: true`**: Hub CTC tokenizer has **no punctuation**; outputs stay lowercase/run-on. Prefer `false` + `character_set` including `.,?!` for readable CTC (see `ndizi_w2vbert_merged.json`).
+- **`use_hub_ctc_checkpoint: false`**: `facebook/w2v-bert-2.0` + custom char vocab from `character_set`.
+- **`qc_allow_sentence_punctuation`** (maps to `QCConfig.allow_sentence_punctuation`): `. , ? ! : ;` are not counted as “weird” in QC.
+- **`use_formatting_score_for_best`**: checkpoint selection uses composite `score` (WER + CER + `punct_recall`) instead of WER alone.
+- Whisper configs set `"stack": "whisper"` and choose model id (e.g. `openai/whisper-large-v3-turbo`).
+- Eval: `evaluate_asr_batch.py` / `evaluate_asr_batch_pipeline.py` apply the same reference formatting as training; post-decode formatting is on by default (`--no-format-decode` to disable). Metrics include **`punct_recall`**; with `--normalize jiwer_default`, **`wer`/`cer`** are punctuation-preserving (raw) and **`wer_jiwer`/`cer_jiwer`** (or `wer_normalized`) report jiwer-stripped scores.
+- Long-audio chunked decode joins segments with `join_chunk_predictions` (sentence boundary between chunks when needed).
 
-Whisper: see `config_files/whisper/ndizi_whisper_small_merged.json` (example merged Hub setup).
+Example w2v-BERT stems: `ndizi_w2vbert_merged`, `ndizi_w2vbert_ndizi1_only`, `ndizi_w2vbert_2025_only`, `ndizi_w2vbert_merged_1epoch`.
 
-### Long audio
+## Cluster / Docker
 
-There is **no** train-time audio chunking; long clips stay as single examples when **`max_input_seconds`** is **`null`**. Prefer the knobs above (and CLI duration overrides) over ad‑hoc chunking.
+`run.sub.example` shows HTCondor + Docker pointing at `bash_scripts/run_train_ndizi_w2vbert.sh`. Adjust `initialdir` and `executable` to your paths.
 
-Important keys:
+## Scope
 
-- **`max_input_seconds`** (default `30`): rows with **longer** `audio_duration` are **dropped** from train and eval. Set to **`null`** to **keep all lengths** (long clips). For VRAM, prefer smaller **`batch_size`**, **`gradient_checkpointing: true`**, **`fp16: true`**, lower **`per_device_eval_batch_size`**, and higher **`gradient_accumulation_steps`** to preserve effective batch size. **`train_model.py`** can override duration filtering without editing the file: **`--max-input-seconds 30`** (drop clips over 30s) or **`--no-max-input-filter`** (keep all lengths).
-- **`use_hub_ctc_checkpoint`** (default `true`): use `AutoProcessor` / `AutoModelForCTC` from **`pretrained_model`** (e.g. `facebook/wav2vec2-bert-rel-pos-large`).
-- **`use_hub_ctc_checkpoint`: `false`** with **`pretrained_model`: `facebook/w2v-bert-2.0`**: builds CTC **`vocab.json`** from **`character_set`**, `Wav2Vec2BertProcessor` + `SeamlessM4TFeatureExtractor`, and loads the backbone with a **resized CTC head**. Example: `ndizi_w2vbert_merged_1epoch.json`. Expand **`character_set`** if labels contain characters that get removed by cleaning.
-
-Copy `.env.example` to `.env` for optional `HF_TOKEN` / `HF_API_KEY` and cache paths.
-
-## Model choice
-
-- **`facebook/wav2vec2-bert-rel-pos-large`** with **`use_hub_ctc_checkpoint: true`** (default merged configs).
-- **`facebook/w2v-bert-2.0`** with **`use_hub_ctc_checkpoint: false`** and a tuned **`character_set`** (see `ndizi_w2vbert_merged_1epoch` configs). For heavier custom pipelines you can still use [`../train_w2v_bert_ctc.py`](../train_w2v_bert_ctc.py).
-- **`../ndizi_finetune_w2vbert.py`** remains an older standalone script; new work should prefer this bundle’s `scripts/train_model.py` + `src/`.
-
-## Outputs
-
-Checkpoints and processor are written under **`output_dir/<experiment_name>/`** where `experiment_name` includes a timestamp (see `ASRConfig.get_experiment_name`). `metrics.json` and `training_config_resolved.json` are saved there after training.
-
-## Optional: HTCondor / Docker
-
-See `run.sub.example`. Point the job at `bash_scripts/run_train_ndizi_w2vbert.sh` and a GPU image with the same Python dependencies.
-
-## Compared to a full multi-thousand-line ASR repo
-
-Not ported (can be added later): Weights & Biases reporting, DDP launch helpers, on-disk **encoded dataset** cache, LID heads / collators, exhaustive data QA filters, and the full “every ablation flag” surface. This bundle focuses on **merged Ndizi Hub data** with either **Hub CTC fine-tune** or **`w2v-bert-2.0` + char vocab**, with extension points in `src/data/dataset.py` and `src/utils/config.py`.
+Focused on **merged Ndizi Hub fine-tuning**, QC-filtered training, and reproducible batched eval—not a full multi-task ASR framework (no LID heads, DDP helpers, or W&B integration in-tree). Extend via `src/data/dataset.py` and `src/utils/config.py`.

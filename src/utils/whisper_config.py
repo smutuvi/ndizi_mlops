@@ -100,6 +100,9 @@ class WhisperTrainingConfig:
     qc_chunk_long_with_mms_fa_eval: bool = False
     qc_chunk_seconds: float = 30.0
     qc_fa_device: str = "auto"
+    format_transcripts: bool = True
+    normalize_oral_tokens: bool = False
+    use_formatting_score_for_best: bool = False
     training_config_raw: Dict[str, Any] = field(default_factory=dict, repr=False)
 
     def get_pretrained_model_path(self) -> str:

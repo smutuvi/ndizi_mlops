@@ -12,7 +12,7 @@
   "per_device_eval_batch_size": 1,
   "gradient_accumulation_steps": 8,
   "num_train_epochs": 25.0,
-  "learning_rate": 1e-5,
+  "learning_rate": 1e-05,
   "warmup_steps": 500,
   "weight_decay": 0.0,
   "fp16": true,
@@ -24,8 +24,14 @@
   "early_stopping_patience": 3,
   "max_input_seconds": null,
   "normalize_wer": false,
-  "train_datasets": ["smutuvi/ndizi-1", "smutuvi/ndizi-1-2025"],
-  "train_splits": ["train", "train"],
+  "train_datasets": [
+    "smutuvi/ndizi-1",
+    "smutuvi/ndizi-1-2025"
+  ],
+  "train_splits": [
+    "train",
+    "train"
+  ],
   "train_weights": null,
   "apply_data_qc": true,
   "qc_use_may6_text_norm": false,
@@ -35,5 +41,9 @@
   "qc_fa_device": "auto",
   "trainable_scope": "full",
   "push_to_hub": true,
-  "hub_model_id": "smutuvi/ndizi_whisper_large_v3_turbo_merged_mms_fa"
+  "hub_model_id": "smutuvi/ndizi_whisper_large_v3_turbo_merged_mms_fa",
+  "format_transcripts": true,
+  "normalize_oral_tokens": false,
+  "qc_allow_sentence_punctuation": true,
+  "use_formatting_score_for_best": true
 }
