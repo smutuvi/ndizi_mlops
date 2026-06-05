@@ -9,6 +9,7 @@ Usage:
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged_10epoch.json --max-input-seconds 30
   python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --no-max-input-filter
+  python3 scripts/train_model.py --config config_files/w2vbert/ndizi_w2vbert_merged.json --apply-data-qc
 """
 from __future__ import annotations
 
@@ -83,6 +84,13 @@ def main() -> None:
         action="store_true",
         help="Override config: keep all clip lengths (set max_input_seconds to null).",
     )
+    parser.add_argument(
+        "--apply-data-qc",
+        "--aggressive-qc",
+        action="store_true",
+        dest="apply_data_qc",
+        help="Enable multi-gate QC on train/eval (off by default; same gates as eval --aggressive-qc).",
+    )
     args = parser.parse_args()
 
     os.environ.setdefault("HF_DATASETS_DISABLE_TORCHCODEC", "1")
@@ -117,6 +125,10 @@ def main() -> None:
     elif args.max_input_seconds is not None:
         config.max_input_seconds = float(args.max_input_seconds)
         logger.info("CLI --max-input-seconds: max_input_seconds=%s", config.max_input_seconds)
+
+    if args.apply_data_qc:
+        config.apply_data_qc = True
+        logger.info("CLI --apply-data-qc: enabling training QC filters.")
 
     setup_seed(config.seed)
     huggingface_set_seed(config.seed)

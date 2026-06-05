@@ -90,6 +90,13 @@ def main() -> None:
         help="Workers for HF Dataset.map during Whisper encoding. Default 1 matches "
         "ndizi_finetune_whisper (multiprocessing often stalls with audio + processor).",
     )
+    parser.add_argument(
+        "--apply-data-qc",
+        "--aggressive-qc",
+        action="store_true",
+        dest="apply_data_qc",
+        help="Enable multi-gate QC on train/eval (off by default; same gates as eval --aggressive-qc).",
+    )
     args = parser.parse_args()
 
     os.environ.setdefault("HF_DATASETS_DISABLE_TORCHCODEC", "1")
@@ -122,6 +129,10 @@ def main() -> None:
     elif args.max_input_seconds is not None:
         config.max_input_seconds = float(args.max_input_seconds)
         logger.info("CLI --max-input-seconds: max_input_seconds=%s", config.max_input_seconds)
+
+    if args.apply_data_qc:
+        config.apply_data_qc = True
+        logger.info("CLI --apply-data-qc: enabling training QC filters.")
 
     setup_seed(config.seed)
     huggingface_set_seed(config.seed)

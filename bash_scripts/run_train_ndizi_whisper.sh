@@ -20,6 +20,7 @@ echo "BUNDLE_ROOT=${BUNDLE_ROOT}"
 echo "HF_HOME=${HF_HOME}"
 
 CONFIG="${1:-${BUNDLE_ROOT}/config_files/whisper/ndizi_whisper_small_merged.json}"
+shift || true
 echo "CONFIG=${CONFIG}"
 
-exec python3 "${BUNDLE_ROOT}/scripts/train_whisper.py" --config "${CONFIG}"
+exec python3 "${BUNDLE_ROOT}/scripts/train_whisper.py" --config "${CONFIG}" "$@"

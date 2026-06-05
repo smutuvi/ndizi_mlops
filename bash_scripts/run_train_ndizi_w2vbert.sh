@@ -20,6 +20,7 @@ echo "BUNDLE_ROOT=${BUNDLE_ROOT}"
 echo "HF_HOME=${HF_HOME}"
 
 CONFIG="${1:-${BUNDLE_ROOT}/config_files/w2vbert/ndizi_w2vbert_merged.json}"
+shift || true
 echo "CONFIG=${CONFIG}"
 
-exec python3 "${BUNDLE_ROOT}/scripts/train_model.py" --config "${CONFIG}"
+exec python3 "${BUNDLE_ROOT}/scripts/train_model.py" --config "${CONFIG}" "$@"
