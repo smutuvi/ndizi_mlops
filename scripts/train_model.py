@@ -99,6 +99,7 @@ def main() -> None:
         load_hub_processor,
     )
     from src.data.dataset_encoders import ASRDatasetEncoder
+    from src.models.ctc_factory import apply_ctc_trainable_scope
     from src.models.factory import create_asr_model, create_asr_model_for_custom_vocab
     from src.training.collator import DataCollatorCTCWithPadding
     from src.training.trainer import create_asr_trainer
@@ -156,6 +157,15 @@ def main() -> None:
         processor = create_processor(config, str(ctc_dir))
         model = create_asr_model_for_custom_vocab(config, processor)
 
+    scope = str(getattr(config, "trainable_scope", "full") or "full")
+    logger.info("Applying trainable_scope=%s", scope)
+    model = apply_ctc_trainable_scope(model, config)
+    if scope == "lora":
+        try:
+            model.print_trainable_parameters()
+        except Exception:  # noqa: BLE001
+            pass
+
     if config.gradient_checkpointing and hasattr(model, "gradient_checkpointing_enable"):
         model.gradient_checkpointing_enable()
 
@@ -184,6 +194,14 @@ def main() -> None:
     processor.save_pretrained(str(model_dir))
     with open(model_dir / "training_config_resolved.json", "w", encoding="utf-8") as f:
         json.dump(asdict(config), f, default=str, indent=2)
+
+    if scope == "lora":
+        logger.info(
+            "LoRA CTC checkpoint saved under %s. Eval with evaluate_asr_batch/single "
+            "--model_path %s (requires peft; adapters merge at load by default).",
+            model_dir,
+            model_dir,
+        )
 
     metrics = trainer.evaluate()
     logger.info("Eval metrics: %s", metrics)

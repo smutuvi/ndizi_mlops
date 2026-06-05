@@ -25,11 +25,34 @@ _GLUE_AFTER_COMMA = re.compile(
 _MULTI_SPACE = re.compile(r"\s+")
 _SPACED_PUNCT_RUN = re.compile(r"(\s+[.!?]){2,}")
 
+# Oral Swahili discourse markers: insert a comma when missing (training + optional decode).
+_DISCOURSE_COMMA_BEFORE = re.compile(
+    r"(?<![.,!?;:\s])\s+("
+    r"lakini|vile vile|kwasababu|kwa sababu|kwa mfano|kwa mfanoo|na pia|ningependa|"
+    r"je|sawa|asante|labda|namaanisha|unamaanisha|nimeona|ninafikiria"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def enrich_discourse_punctuation(text: str) -> str:
+    """
+    Insert commas before common Swahili clause boundaries when the source has none.
+
+    Does not remove existing punctuation. Safe to run on labels and on decode output.
+    """
+    s = str(text or "").strip()
+    if not s:
+        return ""
+    s = _DISCOURSE_COMMA_BEFORE.sub(r", \1", s)
+    return _MULTI_SPACE.sub(" ", s).strip()
+
 
 def format_transcript(
     text: str,
     *,
     normalize_oral: bool = False,
+    discourse_commas: bool = False,
 ) -> str:
     """
     Normalize spacing and light punctuation layout for training / references.
@@ -57,12 +80,23 @@ def format_transcript(
             s = pat.sub(repl, s)
         s = _MULTI_SPACE.sub(" ", s).strip()
 
+    if discourse_commas:
+        s = enrich_discourse_punctuation(s)
+
     return s
 
 
-def format_decode_output(text: str) -> str:
-    """Post-decode cleanup (chunk joins, CTC spacing). Same rules as :func:`format_transcript`."""
-    return format_transcript(text, normalize_oral=False)
+def format_decode_output(text: str, *, discourse_commas: bool = False) -> str:
+    """Post-decode cleanup (chunk joins, CTC spacing)."""
+    return format_transcript(text, normalize_oral=False, discourse_commas=discourse_commas)
+
+
+def ensure_chunk_label_terminal_period(label: str) -> str:
+    """Append ``.`` when a MMS-FA chunk label has no sentence-ending punctuation."""
+    s = str(label or "").strip()
+    if not s or s[-1] in SENTENCE_PUNCT_CHARS:
+        return s
+    return s + "."
 
 
 def join_chunk_predictions(parts: List[str]) -> str:
@@ -90,9 +124,15 @@ def format_transcription_batch(
     *,
     text_col: str = "transcription",
     normalize_oral: bool = False,
+    discourse_commas: bool = False,
 ) -> Dict[str, Any]:
     batch[text_col] = [
-        format_transcript(t, normalize_oral=normalize_oral) for t in batch[text_col]
+        format_transcript(
+            t,
+            normalize_oral=normalize_oral,
+            discourse_commas=discourse_commas,
+        )
+        for t in batch[text_col]
     ]
     return batch
 

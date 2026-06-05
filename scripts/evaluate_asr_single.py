@@ -138,6 +138,11 @@ def main() -> None:
         action="store_true",
         help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
     )
+    parser.add_argument(
+        "--discourse-commas",
+        action="store_true",
+        help="Insert commas before common Swahili discourse markers in decode output.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -234,14 +239,25 @@ def main() -> None:
         )
     else:
         whisper_decoder_cap = 0
-        from transformers import AutoModelForCTC, AutoProcessor
+        from transformers import AutoProcessor
+
+        from src.models.ctc_factory import load_ctc_model_for_eval
+        from src.models.whisper_factory import is_peft_adapter_checkpoint
 
         processor = AutoProcessor.from_pretrained(proc_path)
         if getattr(processor, "tokenizer", None) is None and not hasattr(processor, "batch_decode"):
             raise RuntimeError("Processor has no tokenizer; cannot decode CTC outputs.")
         forced_decoder_ids = None
         model_input_name = eb.probe_model_input_name(processor)
-        model = AutoModelForCTC.from_pretrained(args.model_path)
+        if is_peft_adapter_checkpoint(args.model_path):
+            log.info(
+                "Loading LoRA CTC checkpoint from %s (base=%s)",
+                args.model_path,
+                text_settings.get("pretrained_model") or "adapter_config.json",
+            )
+        else:
+            log.info("Loading CTC model from %s", args.model_path)
+        model = load_ctc_model_for_eval(args.model_path, text_settings=text_settings)
 
     model.to(device)
     model.eval()
@@ -292,7 +308,10 @@ def main() -> None:
     if not args.no_format_decode:
         from src.data.text_format import format_decode_output
 
-        text = format_decode_output(text)
+        discourse_commas = bool(args.discourse_commas)
+        if not discourse_commas and text_settings:
+            discourse_commas = bool(text_settings.get("enrich_discourse_punctuation", False))
+        text = format_decode_output(text, discourse_commas=discourse_commas)
     print(text, flush=True)
 
     if args.output_json:

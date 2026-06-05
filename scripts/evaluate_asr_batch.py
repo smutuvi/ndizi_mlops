@@ -10,7 +10,8 @@ wav2vec2-style uses ``input_values`` — same as ``scripts/train_model.py``).
 ``scripts/train_whisper.py``). Decoding uses ``model.generate`` with forced decoder ids.
 **LoRA continual** checkpoints (``trainable_scope: lora``) save adapter weights plus
 ``training_config_resolved.json``; eval loads the base ``pretrained_model``, applies the
-adapter, and merges for inference (requires ``peft``).
+adapter, and merges for inference (requires ``peft``). Same for **CTC / w2v-BERT LoRA**
+from ``scripts/train_model.py``.
 
 **Audio length:** by default **no** max-duration filter (all utterances are scored),
 matching common batch eval drivers that only resample to 16 kHz. To align with
@@ -498,6 +499,7 @@ def eval_reference_like_training(raw: str, text_settings: Dict[str, Any]) -> str
         s = format_transcript(
             s,
             normalize_oral=bool(text_settings.get("normalize_oral_tokens", False)),
+            discourse_commas=bool(text_settings.get("enrich_discourse_punctuation", False)),
         )
     return clean_transcription_like_training(
         s,
@@ -527,6 +529,7 @@ def load_eval_text_settings(
         "apply_accent_replacements": True,
         "format_transcripts": True,
         "normalize_oral_tokens": False,
+        "enrich_discourse_punctuation": False,
         "lowercase_ctc_labels": True,
         "config_path": None,
         "whisper_language": "sw",
@@ -558,6 +561,7 @@ def load_eval_text_settings(
                     "apply_accent_replacements": True,
                     "format_transcripts": bool(raw.get("format_transcripts", True)),
                     "normalize_oral_tokens": bool(raw.get("normalize_oral_tokens", False)),
+                    "enrich_discourse_punctuation": bool(raw.get("enrich_discourse_punctuation", False)),
                     "lowercase_ctc_labels": True,
                     "training_config_raw": dict(raw),
                 }
@@ -569,6 +573,7 @@ def load_eval_text_settings(
                 "apply_accent_replacements": bool(cfg.apply_accent_replacements),
                 "format_transcripts": bool(cfg.format_transcripts),
                 "normalize_oral_tokens": bool(cfg.normalize_oral_tokens),
+                "enrich_discourse_punctuation": bool(cfg.enrich_discourse_punctuation),
                 "lowercase_ctc_labels": bool(cfg.lowercase_ctc_labels),
                 "config_path": str(p),
                 "whisper_language": defaults["whisper_language"],
@@ -1132,6 +1137,11 @@ def main() -> None:
         action="store_true",
         help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
     )
+    parser.add_argument(
+        "--discourse-commas",
+        action="store_true",
+        help="Insert commas before common Swahili discourse markers in decode output (lakini, vile vile, …).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -1246,15 +1256,25 @@ def main() -> None:
             gen_req,
         )
     else:
-        from transformers import AutoModelForCTC, AutoProcessor
+        from transformers import AutoProcessor
+
+        from src.models.ctc_factory import load_ctc_model_for_eval
+        from src.models.whisper_factory import is_peft_adapter_checkpoint
 
         processor = AutoProcessor.from_pretrained(proc_path)
         if getattr(processor, "tokenizer", None) is None and not hasattr(processor, "batch_decode"):
             raise RuntimeError("Processor has no tokenizer; cannot decode CTC outputs.")
         forced_decoder_ids = None
         model_input_name = probe_model_input_name(processor)
-        log.info("Loading model from %s", args.model_path)
-        model = AutoModelForCTC.from_pretrained(args.model_path)
+        if is_peft_adapter_checkpoint(args.model_path):
+            log.info(
+                "Loading LoRA CTC checkpoint from %s (base=%s)",
+                args.model_path,
+                text_settings.get("pretrained_model") or "adapter_config.json",
+            )
+        else:
+            log.info("Loading CTC model from %s", args.model_path)
+        model = load_ctc_model_for_eval(args.model_path, text_settings=text_settings)
 
     model.to(device)
     model.eval()
@@ -1366,7 +1386,12 @@ def main() -> None:
         if not args.no_format_decode:
             from src.data.text_format import format_decode_output
 
-            pred_raw = [format_decode_output(p) for p in pred_raw]
+            discourse_commas = bool(args.discourse_commas) or bool(
+                text_settings.get("enrich_discourse_punctuation", False)
+            )
+            pred_raw = [
+                format_decode_output(p, discourse_commas=discourse_commas) for p in pred_raw
+            ]
 
         qm = compute_split_quality_metrics(
             pred_raw, ref_raw_col, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c

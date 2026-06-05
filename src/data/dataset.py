@@ -209,6 +209,7 @@ def _apply_qc_mms_fa_to_split(
             chunk_seconds=float(getattr(config, "qc_chunk_seconds", 30.0)),
             fa_ctx=fa_ctx,
             split_label=split_label,
+            chunk_terminal_period=bool(getattr(config, "mms_fa_chunk_terminal_period", True)),
         )
         logger.info(
             "[%s] Post-MMS_FA QC (audio gates only; text gates skipped on chunks)",
@@ -344,6 +345,7 @@ def load_datasets(config: ASRConfig | WhisperTrainingConfig) -> Tuple[Dataset, D
     if getattr(config, "format_transcripts", True):
         fmt_kw = dict(
             normalize_oral=bool(getattr(config, "normalize_oral_tokens", False)),
+            discourse_commas=bool(getattr(config, "enrich_discourse_punctuation", False)),
         )
         train_raw = train_raw.map(
             lambda b: format_transcription_batch(b, **fmt_kw),

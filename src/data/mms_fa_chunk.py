@@ -209,6 +209,7 @@ def expand_long_examples_mms_fa(
     fa_ctx: Dict[str, Any],
     split_label: str = "",
     label_col: str = "clean_transcription",
+    chunk_terminal_period: bool = True,
 ) -> Any:
     """
     Split long rows into word-aligned segments using MMS_FA.
@@ -296,13 +297,18 @@ def expand_long_examples_mms_fa(
             stats["expanded"] += 1
             n_fa = len(words)
             raw_full = str(txt_raw or "")
-            for s0, s1, w0, w1 in segs:
+            from src.data.text_format import ensure_chunk_label_terminal_period
+
+            n_segs = len(segs)
+            for seg_idx, (s0, s1, w0, w1) in enumerate(segs):
                 seg_fa = _slice_text_by_fa_word_span(t, word_start=w0, word_end_exclusive=w1, n_fa_words=n_fa)
                 seg_label = _slice_text_by_fa_word_span(
                     label_full, word_start=w0, word_end_exclusive=w1, n_fa_words=n_fa
                 )
                 if not seg_label:
                     continue
+                if chunk_terminal_period and seg_idx < n_segs - 1:
+                    seg_label = ensure_chunk_label_terminal_period(seg_label)
                 i0 = max(0, int(round(s0 * sr)))
                 i1 = min(len(arr), int(round(s1 * sr)))
                 if i1 <= i0:

@@ -81,9 +81,18 @@ class ASRConfig:
     # Format Hub transcripts (spacing after .?!, etc.) before clean_transcription.
     format_transcripts: bool = True
     normalize_oral_tokens: bool = False
+    enrich_discourse_punctuation: bool = False
+    mms_fa_chunk_terminal_period: bool = True
     lowercase_ctc_labels: bool = True
     # When true, Trainer uses composite score (WER+CER+punct recall) for best checkpoint.
     use_formatting_score_for_best: bool = False
+
+    # Adaptation: full | freeze_encoder | decoder_only | lora (PEFT; requires peft).
+    trainable_scope: str = "full"
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
+    lora_target_modules: Optional[List[str]] = None
 
     pretrained_model_map: Dict[str, str] = field(default_factory=_default_pretrained_model_map)
 

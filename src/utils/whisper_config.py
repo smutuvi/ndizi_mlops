@@ -102,6 +102,8 @@ class WhisperTrainingConfig:
     qc_fa_device: str = "auto"
     format_transcripts: bool = True
     normalize_oral_tokens: bool = False
+    enrich_discourse_punctuation: bool = False
+    mms_fa_chunk_terminal_period: bool = True
     use_formatting_score_for_best: bool = False
     training_config_raw: Dict[str, Any] = field(default_factory=dict, repr=False)
 

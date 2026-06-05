@@ -242,6 +242,11 @@ def main() -> None:
         action="store_true",
         help="Skip post-decode transcript formatting (spacing after .?!, etc.).",
     )
+    parser.add_argument(
+        "--discourse-commas",
+        action="store_true",
+        help="Insert commas before common Swahili discourse markers in decode output.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -330,12 +335,19 @@ def main() -> None:
         }
         log.info("Whisper pipeline: language=%s task=%s max_length=%s", wh_lang, wh_task, whisper_decoder_cap)
     else:
-        from transformers import AutoModelForCTC, AutoProcessor
+        from transformers import AutoProcessor
+
+        from src.models.ctc_factory import load_ctc_model_for_eval
+        from src.models.whisper_factory import is_peft_adapter_checkpoint
 
         processor = AutoProcessor.from_pretrained(proc_path)
         if getattr(processor, "tokenizer", None) is None and not hasattr(processor, "batch_decode"):
             raise RuntimeError("Processor has no tokenizer; cannot decode CTC outputs.")
-        model = AutoModelForCTC.from_pretrained(args.model_path)
+        if is_peft_adapter_checkpoint(args.model_path):
+            log.info("Loading LoRA CTC checkpoint from %s", args.model_path)
+        else:
+            log.info("Loading CTC model from %s", args.model_path)
+        model = load_ctc_model_for_eval(args.model_path, text_settings=text_settings)
         model_input_name = eb.probe_model_input_name(processor)
         log.info("CTC pipeline: model_input_name=%s", model_input_name)
 
@@ -444,7 +456,12 @@ def main() -> None:
         if not args.no_format_decode:
             from src.data.text_format import format_decode_output
 
-            pred_raw = [format_decode_output(p) for p in pred_raw]
+            discourse_commas = bool(args.discourse_commas) or bool(
+                text_settings.get("enrich_discourse_punctuation", False)
+            )
+            pred_raw = [
+                format_decode_output(p, discourse_commas=discourse_commas) for p in pred_raw
+            ]
 
         qm = eb.compute_split_quality_metrics(
             pred_raw, ref_raw_col, text_mode, wer_m, cer_m, jiwer_tr_w, jiwer_tr_c
