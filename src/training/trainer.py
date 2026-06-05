@@ -11,7 +11,7 @@ import torch
 from transformers import Trainer, TrainingArguments
 
 from src.data.dataset import ASRProcessor
-from src.training.metrics import ASRMetrics
+from src.training.metrics import ASRMetrics, preprocess_logits_for_metrics
 from src.utils.config import ASRConfig
 
 logger = logging.getLogger(__name__)
@@ -124,6 +124,7 @@ def create_asr_trainer(
         eval_dataset=eval_dataset,
         data_collator=data_collator,
         compute_metrics=asr_metrics.compute_metrics,
+        preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
     tr_sig = inspect.signature(Trainer.__init__)
     if "processing_class" in tr_sig.parameters:

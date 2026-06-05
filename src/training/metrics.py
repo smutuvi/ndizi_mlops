@@ -17,7 +17,34 @@ logger = logging.getLogger(__name__)
 
 
 def preprocess_logits_for_metrics(logits: Any, labels: Any) -> np.ndarray:
-    return logits.argmax(axis=-1)
+    """Store greedy token ids (batch, time); avoids saving full vocab logits on disk."""
+    if isinstance(logits, (tuple, list)):
+        logits = logits[0]
+    arr = np.asarray(logits)
+    if arr.ndim >= 3:
+        return arr.argmax(axis=-1)
+    return arr
+
+
+def _prediction_token_ids(predictions: Any) -> np.ndarray:
+    """
+    Convert Trainer ``predictions`` to per-frame token ids ``(batch, time)``.
+
+    Do **not** argmax along time — that collapses each utterance to one token id
+    (the max id in the row), which decodes as a single letter (e.g. ``\"n\"``).
+    """
+    arr = np.asarray(predictions)
+    if arr.ndim >= 3:
+        return arr.argmax(axis=-1)
+    if arr.ndim == 2:
+        return arr.astype(np.int64, copy=False)
+    raise ValueError(f"Unexpected prediction shape for CTC metrics: {arr.shape}")
+
+
+def _batch_decode_ctc(processor: ASRProcessor, token_ids: np.ndarray) -> list[str]:
+    if hasattr(processor, "batch_decode"):
+        return list(processor.batch_decode(token_ids))
+    return list(processor.tokenizer.batch_decode(token_ids))
 
 
 class ASRMetrics:
@@ -37,10 +64,10 @@ class ASRMetrics:
     def compute_metrics(self, pred: PredictionOutput) -> Dict[str, float]:
         k = self._call_count
         self._call_count += 1
-        pred_ids = np.argmax(pred.predictions, axis=-1)
+        pred_ids = _prediction_token_ids(pred.predictions)
         lab = pred.label_ids.copy()
         lab[lab == -100] = self.processor.tokenizer.pad_token_id
-        pred_str = self.processor.tokenizer.batch_decode(pred_ids)
+        pred_str = _batch_decode_ctc(self.processor, pred_ids)
         try:
             label_str = self.processor.tokenizer.batch_decode(lab, group_tokens=False)
         except TypeError:
