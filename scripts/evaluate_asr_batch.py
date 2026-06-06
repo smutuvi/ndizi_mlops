@@ -538,7 +538,7 @@ def load_eval_text_settings(
         "whisper_task": "transcribe",
         "training_config_raw": None,
     }
-    from src.utils.config import load_config, read_raw_training_config
+    from src.utils.config import read_raw_training_config
 
     candidates: List[Path] = []
     if training_config:
@@ -567,22 +567,24 @@ def load_eval_text_settings(
                     "lowercase_ctc_labels": True,
                     "training_config_raw": dict(raw),
                 }
-            cfg = load_config(p)
+            # Read CTC settings from raw JSON — do not run training-only load_config validation.
             return {
                 "stack": "ctc",
-                "use_hub_ctc_checkpoint": bool(cfg.use_hub_ctc_checkpoint),
-                "character_set": str(cfg.character_set),
-                "apply_accent_replacements": bool(cfg.apply_accent_replacements),
-                "format_transcripts": bool(cfg.format_transcripts),
-                "normalize_oral_tokens": bool(cfg.normalize_oral_tokens),
-                "enrich_discourse_punctuation": bool(cfg.enrich_discourse_punctuation),
-                "lowercase_ctc_labels": bool(cfg.lowercase_ctc_labels),
-                "pretrained_model": str(cfg.pretrained_model or raw.get("pretrained_model", "")),
-                "trainable_scope": str(getattr(cfg, "trainable_scope", "full") or "full"),
+                "use_hub_ctc_checkpoint": bool(raw.get("use_hub_ctc_checkpoint", defaults["use_hub_ctc_checkpoint"])),
+                "character_set": str(raw.get("character_set", defaults["character_set"])),
+                "apply_accent_replacements": bool(raw.get("apply_accent_replacements", defaults["apply_accent_replacements"])),
+                "format_transcripts": bool(raw.get("format_transcripts", defaults["format_transcripts"])),
+                "normalize_oral_tokens": bool(raw.get("normalize_oral_tokens", defaults["normalize_oral_tokens"])),
+                "enrich_discourse_punctuation": bool(
+                    raw.get("enrich_discourse_punctuation", defaults["enrich_discourse_punctuation"])
+                ),
+                "lowercase_ctc_labels": bool(raw.get("lowercase_ctc_labels", defaults["lowercase_ctc_labels"])),
+                "pretrained_model": str(raw.get("pretrained_model", "")),
+                "trainable_scope": str(raw.get("trainable_scope", "full") or "full"),
                 "config_path": str(p),
                 "whisper_language": defaults["whisper_language"],
                 "whisper_task": defaults["whisper_task"],
-                "training_config_raw": dict(cfg.training_config_raw),
+                "training_config_raw": dict(raw),
             }
     return defaults
 

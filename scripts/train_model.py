@@ -136,6 +136,9 @@ def main() -> None:
 
     if args.skip_data_qc:
         config.apply_data_qc = False
+        config.qc_use_may6_text_norm = False
+        config.qc_chunk_long_with_mms_fa = False
+        config.qc_chunk_long_with_mms_fa_eval = False
         logger.info("CLI --no-apply-data-qc: disabling training QC filters.")
     elif args.force_data_qc:
         config.apply_data_qc = True
