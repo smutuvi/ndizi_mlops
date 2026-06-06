@@ -116,7 +116,7 @@ def main() -> None:
     )
     from src.data.dataset_encoders import ASRDatasetEncoder
     from src.models.ctc_factory import apply_ctc_trainable_scope
-    from src.models.factory import create_asr_model, create_asr_model_for_custom_vocab
+    from src.models.factory import create_asr_model, create_asr_model_for_custom_vocab, sync_ctc_model_with_tokenizer
     from src.training.collator import DataCollatorCTCWithPadding
     from src.training.trainer import create_asr_trainer
     from src.utils.config import load_config
@@ -176,6 +176,20 @@ def main() -> None:
         ctc_dir = model_dir / "ctc_tokenizer"
         ctc_dir.mkdir(parents=True, exist_ok=True)
         (ctc_dir / "vocab.json").write_text(json.dumps(vocab_dict, ensure_ascii=False, indent=2), encoding="utf-8")
+        (ctc_dir / "tokenizer_config.json").write_text(
+            json.dumps(
+                {
+                    "unk_token": "<unk>",
+                    "pad_token": "<pad>",
+                    "word_delimiter_token": "|",
+                    "tokenizer_class": "Wav2Vec2CTCTokenizer",
+                    "do_lower_case": False,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
         logger.info("Wrote CTC vocab (%d entries) to %s", len(vocab_dict), ctc_dir)
         processor = create_processor(config, str(ctc_dir))
         model = create_asr_model_for_custom_vocab(config, processor)
@@ -183,6 +197,12 @@ def main() -> None:
     scope = str(getattr(config, "trainable_scope", "full") or "full")
     logger.info("Applying trainable_scope=%s", scope)
     model = apply_ctc_trainable_scope(model, config)
+    sync_ctc_model_with_tokenizer(model, processor)
+    logger.info(
+        "CTC tokenizer: vocab=%s pad_id=%s (blank); bos/eos disabled",
+        len(processor.tokenizer),
+        processor.tokenizer.pad_token_id,
+    )
     if scope == "lora":
         try:
             model.print_trainable_parameters()

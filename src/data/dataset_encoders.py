@@ -87,7 +87,10 @@ class ASRDatasetEncoder(DatasetEncoder):
         features = self.processor(audio_arrays, sampling_rate=sampling_rate)
         batch[self._feature_key] = self._extract_features(features)
         batch["length"] = [len(f) for f in batch[self._feature_key]]
-        batch["labels"] = self.processor(text=batch[self.text_column]).input_ids
+        batch["labels"] = self.processor.tokenizer(
+            batch[self.text_column],
+            add_special_tokens=False,
+        ).input_ids
         return batch
 
 

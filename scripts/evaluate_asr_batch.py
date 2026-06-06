@@ -441,12 +441,12 @@ class RowCollator:
 
 def decode_pred_ids(processor: Any, pred_ids: Any) -> List[str]:
     """Greedy CTC token ids → text (same as ``ASRMetrics``: ``batch_decode(pred_ids)``)."""
-    tok = getattr(processor, "tokenizer", None)
-    if tok is not None:
-        return tok.batch_decode(pred_ids)
-    if hasattr(processor, "batch_decode"):
-        return processor.batch_decode(pred_ids)
-    raise RuntimeError("Processor cannot decode token ids")
+    from src.training.metrics import _batch_decode_ctc
+
+    arr = np.asarray(pred_ids)
+    if arr.ndim == 1:
+        arr = arr[None, :]
+    return _batch_decode_ctc(processor, arr)
 
 
 def reference_for_wer_like_training(processor: Any, clean_transcription: str) -> str:

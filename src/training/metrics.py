@@ -61,7 +61,23 @@ def _prediction_token_ids(predictions: Any) -> np.ndarray:
     raise ValueError(f"Unexpected prediction shape for CTC metrics: {arr.shape}")
 
 
+def _sanitize_ctc_pred_ids(pred_ids: np.ndarray, processor: ASRProcessor) -> np.ndarray:
+    """Map BOS/EOS/UNK frame predictions to CTC blank (pad) before decode."""
+    tok = processor.tokenizer
+    pad = int(tok.pad_token_id)
+    out = pred_ids.copy()
+    for sid in (
+        getattr(tok, "bos_token_id", None),
+        getattr(tok, "eos_token_id", None),
+        getattr(tok, "unk_token_id", None),
+    ):
+        if sid is not None:
+            out[out == int(sid)] = pad
+    return out
+
+
 def _batch_decode_ctc(processor: ASRProcessor, token_ids: np.ndarray) -> list[str]:
+    token_ids = _sanitize_ctc_pred_ids(token_ids, processor)
     if hasattr(processor, "batch_decode"):
         return list(processor.batch_decode(token_ids))
     return list(processor.tokenizer.batch_decode(token_ids))

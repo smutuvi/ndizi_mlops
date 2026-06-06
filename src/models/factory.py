@@ -7,6 +7,28 @@ from transformers import AutoConfig, AutoModelForCTC, AutoProcessor, Wav2Vec2Pro
 from src.utils.config import ASRConfig
 
 
+def sync_ctc_model_with_tokenizer(model: torch.nn.Module, processor: AutoProcessor | Wav2Vec2Processor) -> None:
+    """Align CTC config with custom tokenizer (no BOS/EOS; pad is CTC blank)."""
+    try:
+        from peft import PeftModel
+    except ImportError:
+        PeftModel = None  # type: ignore[misc, assignment]
+    base = model.get_base_model() if PeftModel is not None and isinstance(model, PeftModel) else model
+    cfg = base.config
+    tok = processor.tokenizer
+    cfg.vocab_size = len(tok)
+    cfg.pad_token_id = tok.pad_token_id
+    for name in ("bos_token_id", "eos_token_id"):
+        if hasattr(cfg, name):
+            setattr(cfg, name, None)
+    gen = getattr(base, "generation_config", None)
+    if gen is not None:
+        gen.pad_token_id = tok.pad_token_id
+        for name in ("bos_token_id", "eos_token_id"):
+            if hasattr(gen, name):
+                setattr(gen, name, None)
+
+
 def create_asr_model(config: ASRConfig, processor: AutoProcessor | Wav2Vec2Processor) -> torch.nn.Module:
     """Load a Hub CTC checkpoint (processor vocab matches checkpoint)."""
     pretrained_model_path = config.get_pretrained_model_path()

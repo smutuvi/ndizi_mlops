@@ -319,6 +319,8 @@ def create_processor(config: ASRConfig, ctc_dir: str) -> ASRProcessor:
         unk_token="<unk>",
         pad_token="<pad>",
         word_delimiter_token="|",
+        bos_token=None,
+        eos_token=None,
     )
     resolved = config.get_pretrained_model_path()
     if _uses_w2v_bert_features(config, resolved):

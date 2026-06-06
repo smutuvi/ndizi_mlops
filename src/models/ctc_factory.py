@@ -240,6 +240,9 @@ def load_ctc_model_for_eval(
             _load_lm_head_state(model, lm_state)
         if merge_lora:
             model = model.merge_and_unload()
+        for name in ("bos_token_id", "eos_token_id"):
+            if hasattr(model.config, name):
+                setattr(model.config, name, None)
     else:
         model = AutoModelForCTC.from_pretrained(base_path)
     return model
