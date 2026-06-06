@@ -1,6 +1,6 @@
 {
-  "project": "Ndizi-W2VBERT-Badrex-Domain-3Epoch",
-  "output_dir": "inprogress/ndizi-w2vbert-badrex-domain-3epoch",
+  "project": "Ndizi-W2VBERT-Badrex-Domain-3Epoch-QC",
+  "output_dir": "inprogress/ndizi-w2vbert-badrex-domain-3epoch-qc",
   "seed": 42,
   "pretrained_model": "badrex/w2v-bert-2.0-swahili-asr",
   "use_hub_ctc_checkpoint": true,
