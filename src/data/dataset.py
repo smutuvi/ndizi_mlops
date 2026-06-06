@@ -22,6 +22,7 @@ from src.data.preprocessing import (
     add_may6_text_norm_batch,
     clean_text_batch,
     hub_ctc_identity_clean_batch,
+    hub_ctc_label_charset,
 )
 from src.data.text_format import format_transcription_batch
 from src.data.mms_fa_chunk import expand_long_examples_mms_fa, load_mms_fa_context
@@ -421,8 +422,24 @@ def load_datasets(config: ASRConfig | WhisperTrainingConfig) -> Tuple[Dataset, D
             desc="text (Whisper: minimal strip)",
         )
     elif config.use_hub_ctc_checkpoint:
-        train_raw = train_raw.map(hub_ctc_identity_clean_batch, batched=True, batch_size=64, desc="text (hub CTC)")
-        eval_raw = eval_raw.map(hub_ctc_identity_clean_batch, batched=True, batch_size=64, desc="text (hub CTC)")
+        hub_path = config.get_pretrained_model_path()
+        hub_charset = hub_ctc_label_charset(hub_path)
+        logger.info(
+            "Hub CTC labels: restrict to %d chars from %s tokenizer (punctuation stripped)",
+            len(set(hub_charset)),
+            hub_path,
+        )
+
+        def _hub_clean(batch: Dict[str, Any]) -> Dict[str, Any]:
+            return clean_text_batch(
+                batch,
+                hub_charset,
+                config.apply_accent_replacements,
+                lowercase=True,
+            )
+
+        train_raw = train_raw.map(_hub_clean, batched=True, batch_size=64, desc="text (hub CTC vocab)")
+        eval_raw = eval_raw.map(_hub_clean, batched=True, batch_size=64, desc="text (hub CTC vocab)")
     else:
         lc = bool(getattr(config, "lowercase_ctc_labels", True))
 

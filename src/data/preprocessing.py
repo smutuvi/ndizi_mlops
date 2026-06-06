@@ -90,6 +90,28 @@ def hub_ctc_identity_clean_batch(batch: Dict[str, Any]) -> Dict[str, Any]:
     return batch
 
 
+def hub_ctc_label_charset(pretrained_model_path: str) -> str:
+    """
+    Build a ``character_set`` string from a Hub CTC tokenizer (e.g. badrex Swahili).
+
+    Hub ASR models only support their pretrained alphabet; punctuation in formatted
+    transcripts must be stripped before label encoding.
+    """
+    from transformers import AutoTokenizer
+
+    tok = AutoTokenizer.from_pretrained(pretrained_model_path)
+    chars: list[str] = []
+    for token, _idx in sorted(tok.get_vocab().items(), key=lambda item: item[1]):
+        if len(token) != 1:
+            continue
+        if token == "|" or (token.startswith("<") and token.endswith(">")):
+            continue
+        chars.append(token)
+    if " " not in chars:
+        chars.append(" ")
+    return "".join(chars)
+
+
 # May 6 (cleaned_ndizi_may_6.py) text normalization for QC gates only — not training labels.
 _NUM_MAP_MAY6 = {
     "0": "sifuri",
