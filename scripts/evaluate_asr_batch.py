@@ -441,6 +441,8 @@ class RowCollator:
 
 def decode_pred_ids(processor: Any, pred_ids: Any) -> List[str]:
     """Greedy CTC token ids → text (same as ``ASRMetrics``: ``batch_decode(pred_ids)``)."""
+    import numpy as np
+
     from src.training.metrics import _batch_decode_ctc
 
     arr = np.asarray(pred_ids)
