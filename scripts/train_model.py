@@ -99,6 +99,13 @@ def main() -> None:
         dest="force_data_qc",
         help="Force QC on even when config sets apply_data_qc: false.",
     )
+    parser.add_argument(
+        "--encode-num-proc",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Parallel workers for dataset feature encoding (default: 1 for w2v-BERT, else up to 4).",
+    )
     args = parser.parse_args()
 
     os.environ.setdefault("HF_DATASETS_DISABLE_TORCHCODEC", "1")
@@ -217,10 +224,36 @@ def main() -> None:
 
     # Smaller map batches use less RAM when encoding long audio (HF map batch, not train micro-batch).
     encode_map_bs = max(2, min(32, config.batch_size * 2))
-    logger.info("Encoding datasets (map batch_size=%s)…", encode_map_bs)
+    from transformers import Wav2Vec2BertProcessor
+
+    if args.encode_num_proc is not None:
+        encode_num_proc = max(1, int(args.encode_num_proc))
+    elif isinstance(processor, Wav2Vec2BertProcessor):
+        # w2v-BERT fbank + HF Dataset multiprocessing often stalls at 0%% with many workers.
+        encode_num_proc = 1
+    elif config.sample:
+        encode_num_proc = 1
+    else:
+        encode_num_proc = min(4, os.cpu_count() or 2)
+    logger.info(
+        "Encoding datasets (map batch_size=%s, num_proc=%s; w2v-BERT fbank is CPU-heavy — "
+        "0%% for several minutes is normal with num_proc=1)…",
+        encode_map_bs,
+        encode_num_proc,
+    )
     encoder = ASRDatasetEncoder(processor, text_column="clean_transcription")
-    train_ds = encoder.encode_dataset(train_raw, batch_size=encode_map_bs, num_proc=min(8, os.cpu_count() or 4))
-    eval_ds = encoder.encode_dataset(eval_raw, batch_size=encode_map_bs, num_proc=min(8, os.cpu_count() or 4))
+    train_ds = encoder.encode_dataset(train_raw, batch_size=encode_map_bs, num_proc=encode_num_proc)
+    eval_ds = encoder.encode_dataset(eval_raw, batch_size=encode_map_bs, num_proc=encode_num_proc)
+
+    if len(train_raw) and "clean_transcription" in train_raw.column_names:
+        logger.info("Sample clean_transcription[0]=%r", train_raw[0]["clean_transcription"])
+    if len(train_ds):
+        sample_labels = train_ds[0]["labels"]
+        try:
+            decoded = processor.tokenizer.decode(sample_labels, group_tokens=False)
+        except TypeError:
+            decoded = processor.batch_decode([sample_labels], group_tokens=False)[0]
+        logger.info("Round-trip decoded label[0]=%r", decoded)
 
     collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
